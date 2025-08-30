@@ -668,7 +668,7 @@ export function RealtimeView() {
             <AlertDialogAction
               onClick={() => {
                 setShowConnectPrompt(false);
-                startWizard(2);
+                startWizard(1);
               }}
             >
               进入连接向导

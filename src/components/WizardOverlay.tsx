@@ -18,7 +18,7 @@ const stepGuides: Record<number, string> = {
 
 export function WizardOverlay() {
   const { isActive, currentStep, totalSteps, endWizard, goPrev, goNext, goToStep } = useWizard();
-  const { currentRoute } = useRouter();
+  const { currentRoute, navigate } = useRouter();
 
   // Do not show the wizard bar on the homepage (dashboard)
   if (!isActive || currentRoute === 'dashboard') return null;
@@ -33,6 +33,11 @@ export function WizardOverlay() {
       document.documentElement.scrollTop = 0;
     }
   }, [isActive, currentStep]);
+
+  const handleClose = () => {
+    endWizard();
+    navigate('realtime');
+  };
 
   return (
     <div className="w-full bg-black">
@@ -97,7 +102,7 @@ export function WizardOverlay() {
 
           {/* 右侧关闭按钮 */}
           <div className="flex items-center shrink-0">
-            <Button variant="ghost" size="icon" onClick={endWizard} aria-label="关闭安装向导" className="text-white hover:bg-white/10">
+            <Button variant="ghost" size="icon" onClick={handleClose} aria-label="关闭安装向导" className="text-white hover:bg-white/10">
               <X className="w-4 h-4" />
             </Button>
           </div>
