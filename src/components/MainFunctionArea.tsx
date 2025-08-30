@@ -69,13 +69,13 @@ export function MainFunctionArea() {
       description: '系统参数配置与管理',
       route: 'settings' as const
     },
-    {
-      icon: <Box className="w-8 h-8" />,
-      title: '三维安装指导',
-      description: '传感器3D安装指导、工装对位与编号匹配',
-      route: '3d-guide' as const,
-      isNew: true
-    }
+    // {
+    //   icon: <Box className="w-8 h-8" />,
+    //   title: '三维安装指导',
+    //   description: '传感器3D安装指导、工装对位与编号匹配',
+    //   route: '3d-guide' as const,
+    //   isNew: true
+    // }
   ];
 
   return (

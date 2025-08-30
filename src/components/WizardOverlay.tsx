@@ -120,17 +120,16 @@ export function WizardOverlay() {
       </div>
 
       {/* 浮动控制区（页面下方居中） */}
-      <div className="fixed left-1/2 -translate-x-1/2 z-[9992]" style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}>
-        <div className="relative overflow-hidden flex items-center gap-4 rounded-full border border-white/30 px-4 py-2 shadow-lg" style={{ backgroundColor: '#000000' }}>
-          <div className="absolute inset-0" style={{ backgroundColor: '#000000' }} aria-hidden="true" />
-          <Button variant="ghost" size="sm" onClick={goPrev} className="hover:bg-white/10" style={{ color: '#ffffff' }}>
-            <ChevronLeft className="w-4 h-4 mr-1" style={{ color: '#ffffff' }} /> 上一步
+      <div className="fixed left-1/2 -translate-x-1/2" style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' ,zIndex: 9992}}>
+        <div className="flex items-center gap-3 rounded-full bg-background border border-border px-4 py-2 shadow-lg">
+          <Button variant="default" size="sm" onClick={goPrev}>
+            <ChevronLeft className="w-4 h-4 mr-1" /> 上一步
           </Button>
-          <Button variant="ghost" size="sm" onClick={goNext} className="hover:bg-white/10" style={{ color: '#ffffff' }}>
+          <Button variant="outline" size="sm" onClick={goNext}>
             跳过
           </Button>
-          <Button variant="ghost" size="sm" onClick={goNext} className="hover:bg-white/10" style={{ color: '#ffffff' }}>
-            下一步 <ChevronRight className="w-4 h-4 ml-1" style={{ color: '#ffffff' }} />
+          <Button variant="default" size="sm" onClick={goNext}>
+            下一步 <ChevronRight className="w-4 h-4 ml-1" />
           </Button>
         </div>
       </div>

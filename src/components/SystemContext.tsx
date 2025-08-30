@@ -28,6 +28,11 @@ export function SystemProvider({ children }: { children?: ReactNode }) {
     return () => clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    // Persist hardware connection state for demo toggling across pages/refreshes
+    localStorage.setItem('hardwareConnected', String(hardwareConnected));
+  }, [hardwareConnected]);
+
   return (
     <SystemContext.Provider value={{ hardwareConnected, isChecking, setHardwareConnected, workbenchSourceType, setWorkbenchSourceType }}>
       {children}

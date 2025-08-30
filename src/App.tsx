@@ -16,6 +16,7 @@ import { Toaster } from 'sonner';
 import { WizardProvider } from './components/WizardContext';
 import { WizardOverlay } from './components/WizardOverlay';
 import { useWizard } from './components/WizardContext';
+import { HardwareToggleFab } from './components/HardwareToggleFab';
 
 function MainApp() {
   const { currentRoute } = useRouter();
@@ -56,6 +57,7 @@ function MainApp() {
           )}
         </>
       )}
+      <HardwareToggleFab />
       <Toaster position="top-center" richColors />
     </div>
   );
