@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
-import { ArrowLeft, Settings, Gauge, Cpu, Database, Target, AlertTriangle, CheckCircle, Move3D, RotateCcw, ZoomIn, ZoomOut, Upload, Download, Undo2, Save } from 'lucide-react';
+import { ArrowLeft, Settings, Gauge, Cpu, Database, Target, AlertTriangle, CheckCircle, Move3D, RotateCcw, ZoomIn, ZoomOut, Undo2, Save } from 'lucide-react';
 import { useUncertainty, DEFAULT_PARAMS } from './UncertaintyContext';
 import { useRouter } from './Router';
 import { useWizard, useWizardSettingsTab } from './WizardContext';
@@ -58,8 +58,6 @@ export function SettingsView() {
     updateDefaults,
     saveDefaults,
     resetDefaults,
-    exportDefaults,
-    importDefaults,
   } = useUncertainty();
   useEffect(() => {
     if (wizardTab) {
@@ -67,24 +65,33 @@ export function SettingsView() {
     }
   }, [wizardTab]);
   
-  // Analysis parameters
-  const [samplingFreq, setSamplingFreq] = useState('1024');
-  const [measurementTime, setMeasurementTime] = useState('10');
-  const [filterCutoff, setFilterCutoff] = useState('500');
+  // Analysis parameters (per spec)
+  const [samplingMode, setSamplingMode] = useState<'angle' | 'time'>('angle');
+  const [samplingPointsPerRev, setSamplingPointsPerRev] = useState('200'); // Ss/r, 点/圈
+  const [samplingRevolutions, setSamplingRevolutions] = useState('20'); // r, 圈
+  const [realtimeRPM, setRealtimeRPM] = useState('1500'); // mock realtime
+  const [setRPM, setSetRPM] = useState('1500'); // 手动设定
   
-  // Standard device settings
-  const [standardType, setStandardType] = useState('laser');
-  const [standardResolution, setStandardResolution] = useState('0.1');
-  const [standardRange, setStandardRange] = useState('100');
+  // Standard device settings (per spec)
+  const [standardRadiusUm, setStandardRadiusUm] = useState('100000'); // μm
+  const [standardArmLengthUm, setStandardArmLengthUm] = useState('200000'); // μm
   
-  // Encoder settings
-  const [encoderPPR, setEncoderPPR] = useState('1024');
-  const [encoderType, setEncoderType] = useState('incremental');
+  // Encoder settings (per spec)
+  const ENCODER_PRESETS: Array<{ id: string; label: string; lines: number; subdiv: number } | { id: 'custom'; label: string }> = [
+    { id: 'omron-1024x4', label: 'Omron E6B2 1024 × 4', lines: 1024, subdiv: 4 },
+    { id: 'omron-2048x4', label: 'Omron E6B2 2048 × 4', lines: 2048, subdiv: 4 },
+    { id: 'heidenhain-5000x8', label: 'Heidenhain 5000 × 8', lines: 5000, subdiv: 8 },
+    { id: 'custom', label: '自定义' }
+  ];
+  const [encoderModel, setEncoderModel] = useState<string>('omron-1024x4');
+  const [encoderLines, setEncoderLines] = useState<string>('1024'); // 100–10000
+  const [encoderSubdivision, setEncoderSubdivision] = useState<string>('4'); // 1–256
   
-  // Capacitive sensor settings
-  const [sensorRange, setSensorRange] = useState('10');
-  const [sensorSensitivity, setSensorSensitivity] = useState('1');
-  const [sensorCount, setSensorCount] = useState('4');
+  // Capacitive sensor parameters (per spec)
+  const [sensorSensitivityCoeff, setSensorSensitivityCoeff] = useState('1.0'); // μm/V, 0.1–100
+  const [sensorInitialDistanceUm, setSensorInitialDistanceUm] = useState('1000'); // μm, 100–5000
+  const [sensorCorrectionScale, setSensorCorrectionScale] = useState('1.0'); // 0.5–2.0
+  const [sensorCorrectionOffsetV, setSensorCorrectionOffsetV] = useState('0.0'); // V, -5~+5
 
   // Scenario settings for capacitive sensor installation
   type ScenarioId = 'scene1' | 'scene2' | 'scene3' | 'scene4';
@@ -162,20 +169,59 @@ export function SettingsView() {
   ];
 
   // Validation functions
-  const validateFrequency = (freq: string) => {
-    const num = parseFloat(freq);
-    return num > 0 && num <= 10000;
+  const validatePointsPerRev = (val: string) => {
+    const num = Number(val);
+    return Number.isFinite(num) && num >= 50 && num <= 5000;
   };
 
-  const validateTime = (time: string) => {
-    const num = parseFloat(time);
-    return num > 0 && num <= 3600;
+  const validateRevolutions = (val: string) => {
+    const num = Number(val);
+    return Number.isFinite(num) && num >= 1 && num <= 200;
   };
 
-  const validateRange = (range: string) => {
-    const num = parseFloat(range);
-    return num > 0 && num <= 1000;
+  const validatePositiveUm = (val: string) => {
+    const num = Number(val);
+    return Number.isFinite(num) && num > 0;
   };
+
+  const validateEncoderLines = (val: string) => {
+    const num = Number(val);
+    return Number.isFinite(num) && num >= 100 && num <= 10000;
+  };
+
+  const validateEncoderSubdivision = (val: string) => {
+    const num = Number(val);
+    return Number.isFinite(num) && num >= 1 && num <= 256;
+  };
+
+  const validateSensitivityCoeff = (val: string) => {
+    const num = Number(val);
+    return Number.isFinite(num) && num >= 0.1 && num <= 100;
+  };
+
+  const validateInitialDistance = (val: string) => {
+    const num = Number(val);
+    return Number.isFinite(num) && num >= 100 && num <= 5000;
+  };
+
+  const validateCorrectionScale = (val: string) => {
+    const num = Number(val);
+    return Number.isFinite(num) && num >= 0.5 && num <= 2.0;
+  };
+
+  const validateCorrectionOffset = (val: string) => {
+    const num = Number(val);
+    return Number.isFinite(num) && num >= -5.0 && num <= 5.0;
+  };
+
+  // Auto apply encoder preset defaults when model changes
+  useEffect(() => {
+    const preset = ENCODER_PRESETS.find(p => 'id' in p && p.id === encoderModel) as any;
+    if (preset && preset.id !== 'custom' && typeof preset.lines === 'number' && typeof preset.subdiv === 'number') {
+      setEncoderLines(String(preset.lines));
+      setEncoderSubdivision(String(preset.subdiv));
+    }
+  }, [encoderModel]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -226,7 +272,7 @@ export function SettingsView() {
 
             {/* Analysis Parameters Tab */}
             <TabsContent value="analysis" className="mt-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -235,125 +281,100 @@ export function SettingsView() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <ConfigItem
-                      label="采样频率"
-                      value={samplingFreq}
-                      unit="Hz"
-                      isValid={validateFrequency(samplingFreq)}
-                      onChange={setSamplingFreq}
-                      error={!validateFrequency(samplingFreq) ? '采样频率应在0-10000Hz之间' : undefined}
-                    />
-                    <ConfigItem
-                      label="测量时间"
-                      value={measurementTime}
-                      unit="秒"
-                      isValid={validateTime(measurementTime)}
-                      onChange={setMeasurementTime}
-                      error={!validateTime(measurementTime) ? '测量时间应在0-3600秒之间' : undefined}
-                    />
-                    <ConfigItem
-                      label="滤波截止频率"
-                      value={filterCutoff}
-                      unit="Hz"
-                      isValid={validateFrequency(filterCutoff)}
-                      onChange={setFilterCutoff}
-                    />
-                  </CardContent>
-                </Card>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">采样模式</Label>
+                      <RadioGroup value={samplingMode} onValueChange={(v) => setSamplingMode(v as 'angle' | 'time')} className="flex items-center gap-6">
+                        <div className="flex items-center gap-2">
+                          <RadioGroupItem value="angle" id="sampling-angle" />
+                          <Label htmlFor="sampling-angle">角度触发</Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <RadioGroupItem value="time" id="sampling-time" />
+                          <Label htmlFor="sampling-time">时间触发</Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>分析方法</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <Label>启用FFT分析</Label>
-                        <Switch defaultChecked />
+                    <ConfigItem
+                      label="采样频率 (Ss/r)"
+                      value={samplingPointsPerRev}
+                      unit="点/圈"
+                      isValid={validatePointsPerRev(samplingPointsPerRev)}
+                      onChange={setSamplingPointsPerRev}
+                      error={!validatePointsPerRev(samplingPointsPerRev) ? '范围：50–5000 点/圈' : undefined}
+                    />
+
+                    <ConfigItem
+                      label="采样圈数 (r)"
+                      value={samplingRevolutions}
+                      unit="圈"
+                      isValid={validateRevolutions(samplingRevolutions)}
+                      onChange={setSamplingRevolutions}
+                      error={!validateRevolutions(samplingRevolutions) ? '范围：1–200 圈' : undefined}
+                    />
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">实时转速 (RPM)</Label>
+                      <div className="flex items-center gap-2">
+                        <Input value={realtimeRPM} readOnly className="flex-1" />
+                        <span className="text-xs text-muted-foreground">{samplingMode === 'angle' ? '角度触发 → 差分计算' : '时间触发 → 传感器波动计算'}</span>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <Label>启用小波分析</Label>
-                        <Switch />
+                      <div className="text-xs text-muted-foreground">实时刷新</div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">设定转速 (RPM)</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={setRPM}
+                          onChange={(e) => setSetRPM(e.target.value)}
+                          className="flex-1"
+                          disabled={samplingMode === 'angle'}
+                        />
+                        <Button variant="outline" disabled={samplingMode === 'angle'} onClick={() => setSetRPM(realtimeRPM)}>自动检测</Button>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <Label>启用包络分析</Label>
-                        <Switch defaultChecked />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <Label>实时数据保存</Label>
-                        <Switch defaultChecked />
-                      </div>
+                      {samplingMode === 'angle' && (
+                        <div className="text-xs text-muted-foreground">角度触发模式下不可用</div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
+
+                
               </div>
             </TabsContent>
 
             {/* Standard Device Tab */}
             <TabsContent value="standard" className="mt-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Target className="w-5 h-5" />
-                      标准器配置
+                      标准器参数
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <div className="space-y-2">
-                      <Label>标准器类型</Label>
-                      <Select value={standardType} onValueChange={setStandardType}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="laser">激光干涉仪</SelectItem>
-                          <SelectItem value="capacitive">电容式位移传感器</SelectItem>
-                          <SelectItem value="optical">光学编码器</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
                     <ConfigItem
-                      label="分辨率"
-                      value={standardResolution}
+                      label="标准器半径"
+                      value={standardRadiusUm}
                       unit="μm"
-                      isValid={validateRange(standardResolution)}
-                      onChange={setStandardResolution}
+                      isValid={validatePositiveUm(standardRadiusUm)}
+                      onChange={setStandardRadiusUm}
+                      error={!validatePositiveUm(standardRadiusUm) ? '范围：> 0 μm' : undefined}
                     />
-                    
                     <ConfigItem
-                      label="测量范围"
-                      value={standardRange}
-                      unit="mm"
-                      isValid={validateRange(standardRange)}
-                      onChange={setStandardRange}
+                      label="标准器臂长"
+                      value={standardArmLengthUm}
+                      unit="μm"
+                      isValid={validatePositiveUm(standardArmLengthUm)}
+                      onChange={setStandardArmLengthUm}
+                      error={!validatePositiveUm(standardArmLengthUm) ? '范围：> 0 μm' : undefined}
                     />
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>校准设置</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <CheckCircle className="w-4 h-4 text-blue-600" />
-                        <span className="font-medium text-blue-800">标准器状态</span>
-                      </div>
-                      <p className="text-sm text-blue-700">
-                        上次校准: 2024-08-15<br/>
-                        有效期至: 2025-08-15<br/>
-                        校准状态: 正常
-                      </p>
-                    </div>
-                    
-                    <Button variant="outline" className="w-full">
-                      启动标准器校准
-                    </Button>
-                  </CardContent>
-                </Card>
+                
               </div>
             </TabsContent>
 
@@ -369,24 +390,33 @@ export function SettingsView() {
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <div className="space-y-2">
-                      <Label>编码器类型</Label>
-                      <Select value={encoderType} onValueChange={setEncoderType}>
+                      <Label>型号</Label>
+                      <Select value={encoderModel} onValueChange={setEncoderModel}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="incremental">增量式</SelectItem>
-                          <SelectItem value="absolute">绝对式</SelectItem>
+                          {ENCODER_PRESETS.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
-                    
+
                     <ConfigItem
-                      label="每转脉冲数(PPR)"
-                      value={encoderPPR}
-                      unit="脉冲/转"
-                      isValid={parseInt(encoderPPR) > 0}
-                      onChange={setEncoderPPR}
+                      label="编码器线数 (lines)"
+                      value={encoderLines}
+                      isValid={validateEncoderLines(encoderLines)}
+                      onChange={setEncoderLines}
+                      error={!validateEncoderLines(encoderLines) ? '范围：100–10000' : undefined}
+                    />
+
+                    <ConfigItem
+                      label="细分倍数"
+                      value={encoderSubdivision}
+                      isValid={validateEncoderSubdivision(encoderSubdivision)}
+                      onChange={setEncoderSubdivision}
+                      error={!validateEncoderSubdivision(encoderSubdivision) ? '范围：1–256' : undefined}
                     />
                   </CardContent>
                 </Card>
@@ -552,38 +582,46 @@ export function SettingsView() {
                 </div>
               </div>
 
-              {/* Original sensor configuration */}
+              {/* Sensor parameters per spec */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Database className="w-5 h-5" />
-                      传感器配置
+                      传感器参数
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <ConfigItem
-                      label="传感器数量"
-                      value={sensorCount}
-                      unit="个"
-                      isValid={parseInt(sensorCount) > 0 && parseInt(sensorCount) <= 8}
-                      onChange={setSensorCount}
+                      label="灵敏度系数"
+                      value={sensorSensitivityCoeff}
+                      unit="μm/V"
+                      isValid={validateSensitivityCoeff(sensorSensitivityCoeff)}
+                      onChange={setSensorSensitivityCoeff}
+                      error={!validateSensitivityCoeff(sensorSensitivityCoeff) ? '范围：0.1–100 μm/V' : undefined}
                     />
-                    
                     <ConfigItem
-                      label="测量范围"
-                      value={sensorRange}
-                      unit="mm"
-                      isValid={validateRange(sensorRange)}
-                      onChange={setSensorRange}
+                      label="初始测量距离"
+                      value={sensorInitialDistanceUm}
+                      unit="μm"
+                      isValid={validateInitialDistance(sensorInitialDistanceUm)}
+                      onChange={setSensorInitialDistanceUm}
+                      error={!validateInitialDistance(sensorInitialDistanceUm) ? '范围：100–5000 μm' : undefined}
                     />
-                    
                     <ConfigItem
-                      label="灵敏度"
-                      value={sensorSensitivity}
-                      unit="V/mm"
-                      isValid={parseFloat(sensorSensitivity) > 0}
-                      onChange={setSensorSensitivity}
+                      label="修正比例系数"
+                      value={sensorCorrectionScale}
+                      isValid={validateCorrectionScale(sensorCorrectionScale)}
+                      onChange={setSensorCorrectionScale}
+                      error={!validateCorrectionScale(sensorCorrectionScale) ? '范围：0.5–2.0' : undefined}
+                    />
+                    <ConfigItem
+                      label="修正偏移量"
+                      value={sensorCorrectionOffsetV}
+                      unit="V"
+                      isValid={validateCorrectionOffset(sensorCorrectionOffsetV)}
+                      onChange={setSensorCorrectionOffsetV}
+                      error={!validateCorrectionOffset(sensorCorrectionOffsetV) ? '范围：-5.0 ~ +5.0 V' : undefined}
                     />
                   </CardContent>
                 </Card>
@@ -805,26 +843,7 @@ export function SettingsView() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Button variant="outline" size="sm" className="gap-2" onClick={resetDefaults}><Undo2 className="w-4 h-4" /> 恢复默认</Button>
-                      <Button variant="outline" size="sm" className="gap-2" onClick={() => {
-                        const data = exportDefaults();
-                        const blob = new Blob([data], { type: 'application/json' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url; a.download = 'uncertainty-defaults.json'; a.click();
-                        URL.revokeObjectURL(url);
-                      }}><Download className="w-4 h-4" /> 导出 JSON</Button>
-                      <Button variant="outline" size="sm" className="gap-2" onClick={() => {
-                        const input = document.createElement('input');
-                        input.type = 'file';
-                        input.accept = 'application/json';
-                        input.onchange = async (e: any) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          const text = await file.text();
-                          importDefaults(text);
-                        };
-                        input.click();
-                      }}><Upload className="w-4 h-4" /> 导入 JSON</Button>
+                      
                       <Button size="sm" className="gap-2" onClick={saveDefaults}><Save className="w-4 h-4" /> 保存为默认</Button>
                     </div>
                   </div>
