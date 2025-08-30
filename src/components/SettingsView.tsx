@@ -247,7 +247,15 @@ export function SettingsView() {
       <div className="p-6">
         <div className="max-w-6xl mx-auto">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-5 w-full">
+            <TabsList className="w-full">
+              <TabsTrigger value="sensor-setup" className="gap-2">
+                <Move3D className="w-4 h-4" />
+                传感器安装
+              </TabsTrigger>
+              <TabsTrigger value="sensor" className="gap-2">
+                <Database className="w-4 h-4" />
+                传感器参数
+              </TabsTrigger>
               <TabsTrigger value="analysis" className="gap-2">
                 <Gauge className="w-4 h-4" />
                 分析参数
@@ -260,15 +268,135 @@ export function SettingsView() {
                 <Cpu className="w-4 h-4" />
                 编码器
               </TabsTrigger>
-              <TabsTrigger value="sensor" className="gap-2">
-                <Database className="w-4 h-4" />
-                电容传感器
-              </TabsTrigger>
               <TabsTrigger value="uncertainty-defaults" className="gap-2">
                 <Settings className="w-4 h-4" />
                 不确定度默认值
               </TabsTrigger>
             </TabsList>
+
+            {/* Sensor Setup Tab */}
+            <TabsContent value="sensor-setup" className="mt-6">
+              {/* Guidance: Help link only */}
+              <div className="p-4 border rounded-lg bg-muted/30 text-sm text-muted-foreground mb-6">
+                <div className="flex items-center justify-end">
+                  <Button variant="link" size="sm" onClick={() => navigate('3d-guide')}>查看安装帮助</Button>
+                </div>
+              </div>
+
+              {/* Scenario selection + 3D + sidebar mapping */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                {/* Column 1: Scene selection sidebar */}
+                <div className="flex">
+                  <Card className="flex-1">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2">场景选择</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <RadioGroup
+                        value={selectedScenario ?? ''}
+                        onValueChange={(v) => setSelectedScenario(v as ScenarioId)}
+                        className="grid grid-cols-1 md:grid-cols-1 gap-3"
+                      >
+                        {scenarios.map((sc) => (
+                          <div
+                            key={sc.id}
+                            className={`p-3 border rounded-lg cursor-pointer transition-all ${selectedScenario === sc.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}`}
+                            onClick={() => setSelectedScenario(sc.id)}
+                            role="button"
+                            aria-pressed={selectedScenario === sc.id}
+                          >
+                            <div className="flex items-start gap-2">
+                              <RadioGroupItem value={sc.id} />
+                              <div className="space-y-1">
+                                <div className="font-medium">{sc.name}</div>
+                                <div className="text-xs text-muted-foreground leading-relaxed">{sc.description}</div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Column 2: 3D model/illustration */}
+                <div className="flex">
+                  <Card className="flex-1">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2">3D 模型/示意图</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="border rounded-lg flex flex-col" style={{ height: '360px' }}>
+                        <div className="flex items-center justify-between px-3 py-2 border-b">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground"><Move3D className="w-4 h-4" />3D 模型/示意图</div>
+                          <div className="flex items-center gap-2">
+                            <Button variant="outline" size="sm" className="gap-1"><RotateCcw className="w-4 h-4" />重置</Button>
+                            <Button variant="outline" size="sm" className="gap-1"><ZoomOut className="w-4 h-4" /></Button>
+                            <Button variant="outline" size="sm" className="gap-1"><ZoomIn className="w-4 h-4" /></Button>
+                            <Button variant="secondary" size="sm" className="gap-1" onClick={() => setIsAnimating((v) => !v)}>{isAnimating ? '停止动画' : '播放安装动画'}</Button>
+                          </div>
+                        </div>
+                        <div className="relative bg-slate-50 overflow-hidden" style={{ height: '288px' }}>
+                          {(() => {
+                            const idx = selectedScenario ? scenarios.findIndex(s => s.id === selectedScenario) : 0;
+                            const clamped = Math.max(0, Math.min(3, idx));
+                            return (
+                              <img
+                                src="/3d_screeshot.png"
+                                alt="3D 场景占位图"
+                                className={`absolute top-0 left-0 transition-transform duration-300 ease-out ${isAnimating ? 'animate-pulse' : ''}`}
+                                style={{ transform: `translateX(-${clamped * 25}%)`, height: '100%', width: 'auto', willChange: 'transform' }}
+                              />
+                            );
+                          })()}
+
+                          {selectedScenario && (
+                            <>
+                              {scenarios.find(s => s.id === selectedScenario)!.highlightChannels.map((ch, idx) => (
+                                <div
+                                  key={ch}
+                                  className={`absolute w-3 h-3 rounded-full ${idx === 0 ? 'bg-yellow-400' : idx === 1 ? 'bg-green-400' : 'bg-red-400'} ${isAnimating ? 'animate-ping' : ''}`}
+                                  style={{ top: `${25 + idx * 20}%`, left: `${30 + (idx % 2) * 35}%` }}
+                                  title={`${ch} 高亮`}
+                                />
+                              ))}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Column 3: Mapping table */}
+                <div className="flex">
+                  <Card className="flex-1">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">传感器 ↔ 工装通道映射表</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {!selectedScenario && (
+                        <div className="text-sm text-muted-foreground">未选择场景。请先在左侧选择“场景1/2/3/4”。</div>
+                      )}
+                      {selectedScenario && (
+                        <div className="space-y-2">
+                          {['CH1','CH2','CH3','CH4','CH5','CH6'].map((ch) => {
+                            const map = scenarios.find(s => s.id === selectedScenario)!.mapping[ch];
+                            const isHighlight = scenarios.find(s => s.id === selectedScenario)!.highlightChannels.includes(ch);
+                            return (
+                              <div key={ch} className={`flex items-center justify-between p-2 border rounded-md ${isHighlight ? 'border-primary/60 bg-primary/5' : ''}`}>
+                                <div className="font-medium text-sm">{ch}</div>
+                                <div className="text-xs text-muted-foreground">{map ? `${map.hole} · 轴向 ${map.axis}` : '未配置'}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </TabsContent>
 
             {/* Analysis Parameters Tab */}
             <TabsContent value="analysis" className="mt-6">
@@ -320,7 +448,7 @@ export function SettingsView() {
                         <span className="text-xs text-muted-foreground">{samplingMode === 'angle' ? '角度触发 → 差分计算' : '时间触发 → 传感器波动计算'}</span>
                       </div>
                       <div className="text-xs text-muted-foreground">实时刷新</div>
-                    </div>
+                      </div>
 
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">设定转速 (RPM)</Label>
@@ -402,7 +530,7 @@ export function SettingsView() {
                         </SelectContent>
                       </Select>
                     </div>
-
+                    
                     <ConfigItem
                       label="编码器线数 (lines)"
                       value={encoderLines}
@@ -447,141 +575,6 @@ export function SettingsView() {
 
             {/* Sensor Tab */}
             <TabsContent value="sensor" className="mt-6">
-              {/* Guidance: Why/How with help link */}
-              <div className="p-4 border rounded-lg bg-muted/30 text-sm text-muted-foreground mb-6">
-                <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <div className="font-medium text-foreground">为什么需要</div>
-                    <div>确保传感器与工装映射正确，软件才能选择正确的误差分析方法。</div>
-                  </div>
-                  <div className="mt-3 md:mt-0">
-                    <div className="font-medium text-foreground">如何操作</div>
-                    <div>选择一个场景 → 根据 3D 提示检查传感器位置。</div>
-                  </div>
-                  <Button variant="link" size="sm" className="mt-3 md:mt-0" onClick={() => navigate('3d-guide')}>查看安装帮助</Button>
-                </div>
-              </div>
-
-              {/* Scenario selection + 3D + sidebar mapping */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                {/* Main area (spans 2 cols) */}
-                <div className="lg:col-span-2 space-y-4">
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="flex items-center gap-2">场景设置与 3D 示意</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* Scenario cards (single RadioGroup root) */}
-                      <RadioGroup
-                        value={selectedScenario ?? ''}
-                        onValueChange={(v) => setSelectedScenario(v as ScenarioId)}
-                        className="grid grid-cols-1 md:grid-cols-4 gap-3"
-                      >
-                        {scenarios.map((sc) => (
-                          <div
-                            key={sc.id}
-                            className={`p-3 border rounded-lg cursor-pointer transition-all ${selectedScenario === sc.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}`}
-                            onClick={() => setSelectedScenario(sc.id)}
-                            role="button"
-                            aria-pressed={selectedScenario === sc.id}
-                          >
-                            <div className="flex items-start gap-2">
-                              <RadioGroupItem value={sc.id} />
-                              <div className="space-y-1">
-                                <div className="font-medium">{sc.name}</div>
-                                <div className="text-xs text-muted-foreground leading-relaxed">{sc.description}</div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </RadioGroup>
-
-                      {/* 3D illustration area */}
-                      <div className="h-72 border rounded-lg">
-                        <div className="flex items-center justify-between px-3 py-2 border-b">
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground"><Move3D className="w-4 h-4" />3D 模型/示意图</div>
-                          <div className="flex items-center gap-2">
-                            <Button variant="outline" size="sm" className="gap-1"><RotateCcw className="w-4 h-4" />重置</Button>
-                            <Button variant="outline" size="sm" className="gap-1"><ZoomOut className="w-4 h-4" /></Button>
-                            <Button variant="outline" size="sm" className="gap-1"><ZoomIn className="w-4 h-4" /></Button>
-                            <Button variant="secondary" size="sm" className="gap-1" onClick={() => setIsAnimating((v) => !v)}>{isAnimating ? '停止动画' : '播放安装动画'}</Button>
-                          </div>
-                        </div>
-                        <div className="relative h-[calc(18rem-41px)] bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center overflow-hidden">
-                          {/* Mock 3D geometry */}
-                          <div className="text-center space-y-2">
-                            <div className={`w-28 h-28 rounded-2xl mx-auto shadow-2xl bg-gradient-to-br from-blue-400 to-blue-600 ${isAnimating ? 'animate-pulse' : ''}`}></div>
-                            <div className="text-xs text-muted-foreground">{selectedScenario ? '拖动旋转，滚轮缩放' : '请选择一个场景以显示示意'}</div>
-                          </div>
-
-                          {/* Highlight points depend on scenario */}
-                          {selectedScenario && (
-                            <>
-                              {scenarios.find(s => s.id === selectedScenario)!.highlightChannels.map((ch, idx) => (
-                                <div
-                                  key={ch}
-                                  className={`absolute w-3 h-3 rounded-full ${idx === 0 ? 'bg-yellow-400' : idx === 1 ? 'bg-green-400' : 'bg-red-400'} ${isAnimating ? 'animate-ping' : ''}`}
-                                  style={{
-                                    top: `${25 + idx * 20}%`,
-                                    left: `${30 + (idx % 2) * 35}%`
-                                  }}
-                                  title={`${ch} 高亮`}
-                                />
-                              ))}
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Sidebar mapping and methods */}
-                <div className="space-y-4">
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base">传感器 ↔ 工装通道映射表</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      {!selectedScenario && (
-                        <div className="text-sm text-muted-foreground">未选择场景。请先在左侧选择“场景1/2/3/4”。</div>
-                      )}
-                      {selectedScenario && (
-                        <div className="space-y-2">
-                          {['CH1','CH2','CH3','CH4','CH5','CH6'].map((ch) => {
-                            const map = scenarios.find(s => s.id === selectedScenario)!.mapping[ch];
-                            const isHighlight = scenarios.find(s => s.id === selectedScenario)!.highlightChannels.includes(ch);
-                            return (
-                              <div key={ch} className={`flex items-center justify-between p-2 border rounded-md ${isHighlight ? 'border-primary/60 bg-primary/5' : ''}`}>
-                                <div className="font-medium text-sm">{ch}</div>
-                                <div className="text-xs text-muted-foreground">{map ? `${map.hole} · 轴向 ${map.axis}` : '未配置'}</div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base">可用误差分析方法</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {!selectedScenario ? (
-                        <div className="text-sm text-muted-foreground">选择场景后显示对应方法。</div>
-                      ) : (
-                        <div className="flex flex-wrap gap-2">
-                          {scenarios.find(s => s.id === selectedScenario)!.methods.map((m) => (
-                            <Badge key={m} variant="secondary">{m}</Badge>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-
               {/* Sensor parameters per spec */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>

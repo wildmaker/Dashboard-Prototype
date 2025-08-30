@@ -27,8 +27,8 @@ function useWizardNavigation() {
   const settingsTabForStep = useCallback((step: WizardStep) => {
     switch (step) {
       case 1:
-        // 场景配置 → 传感器配置页
-        return 'sensor';
+        // 场景配置 → 设置页的“传感器安装”tab
+        return 'sensor-setup';
       case 3:
         // 参数配置
         return 'analysis';
