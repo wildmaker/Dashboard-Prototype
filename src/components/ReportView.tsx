@@ -15,6 +15,7 @@ export function ReportView() {
   const [reportTitle, setReportTitle] = useState('主轴回转精度检测报告');
   const [headerText, setHeaderText] = useState('主轴误差分析仪系统');
   const [footerText, setFooterText] = useState('© 2024 主轴误差分析仪系统 - 自动生成报告');
+  const viewMethod: 'single' | 'double' | 'triple' | 'donaldson' = 'single';
 
   const templates = [
     { value: 'simple', label: '简洁模板', description: '主轴径向轴向误差和基本参数' },
@@ -228,34 +229,58 @@ export function ReportView() {
                         chartLayout === 'single' ? 'grid-cols-1' : 
                         'grid-cols-1'
                       }`}>
-                        <div className="border border-dashed border-muted-foreground/30 rounded-lg h-48 flex items-center justify-center">
-                          <div className="text-center text-muted-foreground">
-                            <FileText className="w-8 h-8 mx-auto mb-2" />
-                            <div className="text-sm">径向误差极坐标图</div>
-                          </div>
-                        </div>
-                        {chartLayout !== 'single' && (
-                          <>
-                            <div className="border border-dashed border-muted-foreground/30 rounded-lg h-48 flex items-center justify-center">
-                              <div className="text-center text-muted-foreground">
-                                <FileText className="w-8 h-8 mx-auto mb-2" />
-                                <div className="text-sm">轴向窜动时域图</div>
+                        <Card>
+                          <CardContent className="p-4">
+                            <div className="mx-auto w-full max-w-[720px]">
+                              <div className="border border-dashed border-muted-foreground/30 rounded-lg h-48 flex items-center justify-center">
+                                <div className="text-center text-muted-foreground">
+                                  <FileText className="w-8 h-8 mx-auto mb-2" />
+                                  <div className="text-sm">径向误差极坐标图</div>
+                                </div>
                               </div>
                             </div>
+                          </CardContent>
+                        </Card>
+                        {chartLayout !== 'single' && (
+                          <>
+                            <Card>
+                              <CardContent className="p-4">
+                                <div className="mx-auto w-full max-w-[720px]">
+                                  <div className="border border-dashed border-muted-foreground/30 rounded-lg h-48 flex items-center justify-center">
+                                    <div className="text-center text-muted-foreground">
+                                      <FileText className="w-8 h-8 mx-auto mb-2" />
+                                      <div className="text-sm">轴向窜动时域图</div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
                             {chartLayout === '2x2' && (
                               <>
-                                <div className="border border-dashed border-muted-foreground/30 rounded-lg h-48 flex items-center justify-center">
-                                  <div className="text-center text-muted-foreground">
-                                    <FileText className="w-8 h-8 mx-auto mb-2" />
-                                    <div className="text-sm">倾角误差图</div>
-                                  </div>
-                                </div>
-                                <div className="border border-dashed border-muted-foreground/30 rounded-lg h-48 flex items-center justify-center">
-                                  <div className="text-center text-muted-foreground">
-                                    <FileText className="w-8 h-8 mx-auto mb-2" />
-                                    <div className="text-sm">频谱分析图</div>
-                                  </div>
-                                </div>
+                                <Card>
+                                  <CardContent className="p-4">
+                                    <div className="mx-auto w-full max-w-[720px]">
+                                      <div className="border border-dashed border-muted-foreground/30 rounded-lg h-48 flex items-center justify-center">
+                                        <div className="text-center text-muted-foreground">
+                                          <FileText className="w-8 h-8 mx-auto mb-2" />
+                                          <div className="text-sm">倾角误差图</div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                                <Card>
+                                  <CardContent className="p-4">
+                                    <div className="mx-auto w-full max-w-[720px]">
+                                      <div className="border border-dashed border-muted-foreground/30 rounded-lg h-48 flex items-center justify-center">
+                                        <div className="text-center text-muted-foreground">
+                                          <FileText className="w-8 h-8 mx-auto mb-2" />
+                                          <div className="text-sm">频谱分析图</div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </CardContent>
+                                </Card>
                               </>
                             )}
                           </>

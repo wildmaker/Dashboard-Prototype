@@ -9,7 +9,18 @@ import { Play, Pause, Database, FileText, FolderOpen, Circle, ChevronDown, Layou
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { useRouter } from './Router';
 import { useSystem } from './SystemContext';
+import { useWizard } from './WizardContext';
 import { toast } from 'sonner';
+import { 
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel
+} from './ui/alert-dialog';
 
 // Chart type for per-panel switching (organized per requirements)
 type ChartType =
@@ -220,6 +231,7 @@ interface DataSource {
 export function RealtimeView() {
   const { navigate } = useRouter();
   const { hardwareConnected, isChecking, setWorkbenchSourceType } = useSystem();
+  const { startWizard } = useWizard();
   const [isPlaying, setIsPlaying] = useState(true);
   const [activeDataSource, setActiveDataSource] = useState('realtime-current');
   const [layoutMode, setLayoutMode] = useState<'grid' | 'single'>('grid');
@@ -232,6 +244,8 @@ export function RealtimeView() {
   });
   const [fourthViewType, setFourthViewType] = useState<ChartType>('spectrum');
   const [initializedSource, setInitializedSource] = useState(false);
+  const [showConnectPrompt, setShowConnectPrompt] = useState(false);
+  const hasPromptedRef = useRef(false);
 
   // Channels: CH1..CH6
   type Channel = 'CH1' | 'CH2' | 'CH3' | 'CH4' | 'CH5' | 'CH6';
@@ -381,11 +395,28 @@ export function RealtimeView() {
     setInitializedSource(true);
   }, [hardwareConnected, isChecking, initializedSource]);
 
+  // When entering realtime route and hardware is not connected, prompt to start connection wizard
+  useEffect(() => {
+    if (isChecking) return;
+    if (!hardwareConnected && !hasPromptedRef.current) {
+      hasPromptedRef.current = true;
+      setShowConnectPrompt(true);
+    }
+  }, [hardwareConnected, isChecking]);
+
   // Reflect current data source type to global system context for top nav button states
   useEffect(() => {
     if (!currentDataSource) return;
     setWorkbenchSourceType(currentDataSource.type);
   }, [currentDataSource, setWorkbenchSourceType]);
+
+  // If user switches from离线 to 实时数据源 while硬件未连接, show the same prompt
+  useEffect(() => {
+    if (isChecking) return;
+    if (currentDataSource?.type === 'realtime' && !hardwareConnected) {
+      setShowConnectPrompt(true);
+    }
+  }, [currentDataSource?.type, hardwareConnected, isChecking]);
 
   const handleDataSourceSelect = (dataSourceId: string) => {
     console.log('handleDataSourceSelect called with:', dataSourceId);
@@ -624,6 +655,27 @@ export function RealtimeView() {
   return (
     <div className="min-h-screen bg-background">
       <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
+      <AlertDialog open={showConnectPrompt} onOpenChange={setShowConnectPrompt}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>未检测到硬件连接</AlertDialogTitle>
+            <AlertDialogDescription>
+              实时采集需要连接硬件。现在进入连接向导进行连接与检查吗？
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>稍后再说</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowConnectPrompt(false);
+                startWizard(2);
+              }}
+            >
+              进入连接向导
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {/* Workbench Header */}
       <div className="border-b border-border p-4">
         <div className="flex items-center justify-between">
