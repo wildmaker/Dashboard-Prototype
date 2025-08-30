@@ -28,7 +28,7 @@ function MainApp() {
         <>
           <HomeHeader />
           <TopStatusBar />
-          <div className="max-w-7xl mx-auto px-4">
+          <div className="max-w-7xl mx-auto px-4 mt-6 md:mt-8">
             <MainFunctionArea />
           </div>
         </>

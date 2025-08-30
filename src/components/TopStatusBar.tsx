@@ -20,7 +20,7 @@ export function TopStatusBar() {
 
   return (
     <div className="bg-muted/30 border-b border-border">
-      <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center gap-3">
+      <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-center gap-3">
         <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-md border">
           <Wifi className="w-4 h-4" />
           <div className={`w-2 h-2 rounded-full ${connectionDotClass} ${hardwareConnected ? 'animate-pulse' : ''}`}></div>

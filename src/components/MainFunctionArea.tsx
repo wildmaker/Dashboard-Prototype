@@ -98,7 +98,7 @@ export function MainFunctionArea() {
           );
         })}
       </div>
-      <div className="mt-auto pt-8 pb-6 flex items-center justify-center">
+      <div className="mt-auto pt-8 pb-6 flex items-center justify-center" style={{ marginTop: '30px' }}>
         <div className="flex gap-3">
           <Button variant="default" size="lg" className="gap-2" onClick={() => startWizard(1)}>
             <Rocket className="w-5 h-5" />

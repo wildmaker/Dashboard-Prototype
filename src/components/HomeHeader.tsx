@@ -4,7 +4,7 @@ import { LogOut } from 'lucide-react';
 
 export function HomeHeader() {
   return (
-    <header className="bg-white border-b border-border">
+    <header className="bg-white border-b border-border mt-[100px]">
       <div className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-3 items-center">
         <div></div>
         <div className="justify-self-center text-center">
