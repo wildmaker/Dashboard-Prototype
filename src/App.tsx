@@ -1,6 +1,7 @@
 import React from 'react';
 import { RouterProvider, useRouter } from './components/Router';
 import { SystemProvider } from './components/SystemContext';
+// Uncertainty provider is mounted in main.tsx; only import dialog for global mount
 import { TopNavigation } from './components/TopNavigation';
 import { MainFunctionArea } from './components/MainFunctionArea';
 // Removed sidebar on homepage; using top status bar instead
@@ -17,6 +18,7 @@ import { WizardProvider } from './components/WizardContext';
 import { WizardOverlay } from './components/WizardOverlay';
 import { useWizard } from './components/WizardContext';
 import { HardwareToggleFab } from './components/HardwareToggleFab';
+import UncertaintyDialog from './components/UncertaintyDialog';
 
 function MainApp() {
   const { currentRoute } = useRouter();
@@ -69,6 +71,7 @@ export default function App() {
       <RouterProvider>
         <WizardProvider>
           <MainApp />
+          <UncertaintyDialog />
         </WizardProvider>
       </RouterProvider>
     </SystemProvider>

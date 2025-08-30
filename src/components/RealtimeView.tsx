@@ -5,7 +5,7 @@ import { Badge } from './ui/badge';
 
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from './ui/select';
 
-import { Play, Pause, Database, FileText, FolderOpen, Circle, ChevronDown, LayoutGrid, Maximize2, Save, Printer } from 'lucide-react';
+import { Play, Pause, Database, FileText, FolderOpen, Circle, ChevronDown, LayoutGrid, Maximize2, Save, Printer, HelpCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { useRouter } from './Router';
 import { useSystem } from './SystemContext';
@@ -21,6 +21,8 @@ import {
   AlertDialogAction,
   AlertDialogCancel
 } from './ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { useUncertainty } from './UncertaintyContext';
 
 // Chart type for per-panel switching (organized per requirements)
 type ChartType =
@@ -232,6 +234,7 @@ export function RealtimeView() {
   const { navigate } = useRouter();
   const { hardwareConnected, isChecking, setWorkbenchSourceType } = useSystem();
   const { startWizard } = useWizard();
+  const { state: uncertaintyState, openDialog: openUncertainty } = useUncertainty();
   const [isPlaying, setIsPlaying] = useState(true);
   const [activeDataSource, setActiveDataSource] = useState('realtime-current');
   const [layoutMode, setLayoutMode] = useState<'grid' | 'single'>('grid');
@@ -465,6 +468,11 @@ export function RealtimeView() {
 
   const handlePrintReport = () => {
     try {
+      if (uncertaintyState.status !== 'filled') {
+        openUncertainty();
+        toast.warning('请先完成不确定度评估', { description: '完成后再尝试打印报告', duration: 2500 });
+        return;
+      }
       window.print();
     } catch (e) {
       console.error('打印失败', e);
@@ -813,10 +821,37 @@ export function RealtimeView() {
               </Button>
             )}
             {currentDataSource?.type !== 'realtime' && (
-              <Button variant="default" size="sm" className="gap-2" onClick={handlePrintReport}>
-                <Printer className="w-4 h-4" />
-                打印报告
-              </Button>
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={uncertaintyState.status === 'filled' ? 'secondary' : uncertaintyState.status === 'stale' ? 'outline' : 'outline'}
+                      size="sm"
+                      className="gap-2"
+                      onClick={openUncertainty}
+                    >
+                      {uncertaintyState.status === 'filled' ? (
+                        <CheckCircle2 className="w-4 h-4 text-green-600" />
+                      ) : uncertaintyState.status === 'stale' ? (
+                        <AlertTriangle className="w-4 h-4 text-amber-600" />
+                      ) : (
+                        <HelpCircle className="w-4 h-4 text-muted-foreground" />
+                      )}
+                      不确定度评估
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {uncertaintyState.lastUpdated
+                      ? `上次更新：${new Date(uncertaintyState.lastUpdated).toLocaleString('zh-CN', { hour12: false })}`
+                      : '未填写'}
+                  </TooltipContent>
+                </Tooltip>
+
+                <Button variant="default" size="sm" className="gap-2" onClick={handlePrintReport}>
+                  <Printer className="w-4 h-4" />
+                  打印报告
+                </Button>
+              </>
             )}
           </div>
         </div>

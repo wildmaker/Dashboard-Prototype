@@ -7,7 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
-import { ArrowLeft, Settings, Gauge, Cpu, Database, Target, AlertTriangle, CheckCircle, Move3D, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowLeft, Settings, Gauge, Cpu, Database, Target, AlertTriangle, CheckCircle, Move3D, RotateCcw, ZoomIn, ZoomOut, Upload, Download, Undo2, Save } from 'lucide-react';
+import { useUncertainty, DEFAULT_PARAMS } from './UncertaintyContext';
 import { useRouter } from './Router';
 import { useWizard, useWizardSettingsTab } from './WizardContext';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
@@ -52,6 +53,14 @@ export function SettingsView() {
   const [activeTab, setActiveTab] = useState('analysis');
   const wizardTab = useWizardSettingsTab();
   const { isActive: isWizardActive } = useWizard();
+  const {
+    defaults,
+    updateDefaults,
+    saveDefaults,
+    resetDefaults,
+    exportDefaults,
+    importDefaults,
+  } = useUncertainty();
   useEffect(() => {
     if (wizardTab) {
       setActiveTab(wizardTab);
@@ -192,7 +201,7 @@ export function SettingsView() {
       <div className="p-6">
         <div className="max-w-6xl mx-auto">
           <Tabs value={isWizardActive && wizardTab ? wizardTab : activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-5 w-full">
+            <TabsList className="grid grid-cols-6 w-full">
               <TabsTrigger value="analysis" className="gap-2">
                 <Gauge className="w-4 h-4" />
                 分析参数
@@ -209,9 +218,9 @@ export function SettingsView() {
                 <Database className="w-4 h-4" />
                 电容传感器
               </TabsTrigger>
-              <TabsTrigger value="uncertainty" className="gap-2">
+              <TabsTrigger value="uncertainty-defaults" className="gap-2">
                 <Settings className="w-4 h-4" />
-                不确定度评定
+                不确定度默认值
               </TabsTrigger>
             </TabsList>
 
@@ -603,62 +612,220 @@ export function SettingsView() {
               </div>
             </TabsContent>
 
-            {/* Uncertainty Assessment Tab */}
-            <TabsContent value="uncertainty" className="mt-6">
+            {/* Uncertainty Defaults Tab */}
+            <TabsContent value="uncertainty-defaults" className="mt-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Settings className="w-5 h-5" />
-                    不确定度评定参数
+                    不确定度默认值
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <CardContent className="space-y-6">
+                  <div className="p-3 rounded-md bg-muted/30 text-sm text-muted-foreground">
+                    此处设置仅作为新建分析的默认值，不影响历史快照。
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="space-y-4">
-                      <h4 className="font-medium">A类不确定度</h4>
-                      <ConfigItem
-                        label="重复性试验次数"
-                        value="10"
-                        unit="次"
-                        isValid={true}
-                        onChange={() => {}}
-                      />
-                      <ConfigItem
-                        label="置信水平"
-                        value="95"
-                        unit="%"
-                        isValid={true}
-                        onChange={() => {}}
-                      />
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <h4 className="font-medium">B类不确定度</h4>
-                      <ConfigItem
-                        label="标准器不确定度"
-                        value="0.5"
-                        unit="μm"
-                        isValid={true}
-                        onChange={() => {}}
-                      />
-                      <ConfigItem
-                        label="环境影响"
-                        value="0.2"
-                        unit="μm"
-                        isValid={true}
-                        onChange={() => {}}
-                      />
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <h4 className="font-medium">合成不确定度</h4>
-                      <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                        <div className="text-sm text-green-800">
-                          <div>标准不确定度: 0.8 μm</div>
-                          <div>扩展不确定度: 1.6 μm</div>
-                          <div>包含因子: k=2</div>
+                      <div className="font-medium">传感器误差</div>
+                      <div className="grid grid-cols-12 gap-3 items-center">
+                        <div className="col-span-4 text-sm">数值</div>
+                        <div className="col-span-8 flex items-center gap-2">
+                          <Input
+                            value={defaults.params.sensorError.value ?? ''}
+                            onChange={(e) => updateDefaults(prev => ({
+                              ...prev,
+                              sensorError: { ...prev.sensorError, value: e.target.value === '' ? null : Number(e.target.value) }
+                            }))}
+                          />
+                          <span className="text-xs text-muted-foreground">μm</span>
                         </div>
                       </div>
+                      <div className="grid grid-cols-12 gap-3 items-center">
+                        <div className="col-span-4 text-sm">分布类型</div>
+                        <div className="col-span-8">
+                          <Select value={defaults.params.sensorError.distribution} onValueChange={(v) => updateDefaults(prev => ({
+                            ...prev,
+                            sensorError: { ...prev.sensorError, distribution: v as any }
+                          }))}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="uniform">均匀分布</SelectItem>
+                              <SelectItem value="normal">正态分布</SelectItem>
+                              <SelectItem value="triangular">三角分布</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="font-medium">标准器误差</div>
+                      <div className="grid grid-cols-12 gap-3 items-center">
+                        <div className="col-span-4 text-sm">数值</div>
+                        <div className="col-span-8 flex items-center gap-2">
+                          <Input
+                            value={defaults.params.standardError.value ?? ''}
+                            onChange={(e) => updateDefaults(prev => ({
+                              ...prev,
+                              standardError: { ...prev.standardError, value: e.target.value === '' ? null : Number(e.target.value) }
+                            }))}
+                          />
+                          <span className="text-xs text-muted-foreground">μm</span>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-12 gap-3 items-center">
+                        <div className="col-span-4 text-sm">分布类型</div>
+                        <div className="col-span-8">
+                          <Select value={defaults.params.standardError.distribution} onValueChange={(v) => updateDefaults(prev => ({
+                            ...prev,
+                            standardError: { ...prev.standardError, distribution: v as any }
+                          }))}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="uniform">均匀分布</SelectItem>
+                              <SelectItem value="normal">正态分布</SelectItem>
+                              <SelectItem value="triangular">三角分布</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div className="font-medium">环境误差</div>
+                      <div className="grid grid-cols-12 gap-3 items-center">
+                        <div className="col-span-4 text-sm">数值</div>
+                        <div className="col-span-8 flex items-center gap-2">
+                          <Input
+                            value={defaults.params.environmentError.value ?? ''}
+                            onChange={(e) => updateDefaults(prev => ({
+                              ...prev,
+                              environmentError: { ...prev.environmentError, value: e.target.value === '' ? null : Number(e.target.value) }
+                            }))}
+                          />
+                          <span className="text-xs text-muted-foreground">μm</span>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-12 gap-3 items-center">
+                        <div className="col-span-4 text-sm">分布类型</div>
+                        <div className="col-span-8">
+                          <Select value={defaults.params.environmentError.distribution} onValueChange={(v) => updateDefaults(prev => ({
+                            ...prev,
+                            environmentError: { ...prev.environmentError, distribution: v as any }
+                          }))}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="uniform">均匀分布</SelectItem>
+                              <SelectItem value="normal">正态分布</SelectItem>
+                              <SelectItem value="triangular">三角分布</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div className="font-medium">径向/轴向不对中</div>
+                      <div className="grid grid-cols-12 gap-3 items-center">
+                        <div className="col-span-4 text-sm">径向数值</div>
+                        <div className="col-span-8 flex items-center gap-2">
+                          <Input
+                            value={defaults.params.radialMisalignment.value ?? ''}
+                            onChange={(e) => updateDefaults(prev => ({
+                              ...prev,
+                              radialMisalignment: { ...prev.radialMisalignment, value: e.target.value === '' ? null : Number(e.target.value) }
+                            }))}
+                          />
+                          <span className="text-xs text-muted-foreground">μm</span>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-12 gap-3 items-center">
+                        <div className="col-span-4 text-sm">轴向数值</div>
+                        <div className="col-span-8 flex items-center gap-2">
+                          <Input
+                            value={defaults.params.axialMisalignment.value ?? ''}
+                            onChange={(e) => updateDefaults(prev => ({
+                              ...prev,
+                              axialMisalignment: { ...prev.axialMisalignment, value: e.target.value === '' ? null : Number(e.target.value) }
+                            }))}
+                          />
+                          <span className="text-xs text-muted-foreground">μm</span>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-12 gap-3 items-center">
+                        <div className="col-span-4 text-sm">径向分布</div>
+                        <div className="col-span-8">
+                          <Select value={defaults.params.radialMisalignment.distribution} onValueChange={(v) => updateDefaults(prev => ({
+                            ...prev,
+                            radialMisalignment: { ...prev.radialMisalignment, distribution: v as any }
+                          }))}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="uniform">均匀分布</SelectItem>
+                              <SelectItem value="normal">正态分布</SelectItem>
+                              <SelectItem value="triangular">三角分布</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-12 gap-3 items-center">
+                        <div className="col-span-4 text-sm">轴向分布</div>
+                        <div className="col-span-8">
+                          <Select value={defaults.params.axialMisalignment.distribution} onValueChange={(v) => updateDefaults(prev => ({
+                            ...prev,
+                            axialMisalignment: { ...prev.axialMisalignment, distribution: v as any }
+                          }))}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="uniform">均匀分布</SelectItem>
+                              <SelectItem value="normal">正态分布</SelectItem>
+                              <SelectItem value="triangular">三角分布</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-muted-foreground">
+                      最后修改时间：{defaults.lastModified ? new Date(defaults.lastModified).toLocaleString('zh-CN', { hour12: false }) : '—'}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" className="gap-2" onClick={resetDefaults}><Undo2 className="w-4 h-4" /> 恢复默认</Button>
+                      <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+                        const data = exportDefaults();
+                        const blob = new Blob([data], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url; a.download = 'uncertainty-defaults.json'; a.click();
+                        URL.revokeObjectURL(url);
+                      }}><Download className="w-4 h-4" /> 导出 JSON</Button>
+                      <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'application/json';
+                        input.onchange = async (e: any) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const text = await file.text();
+                          importDefaults(text);
+                        };
+                        input.click();
+                      }}><Upload className="w-4 h-4" /> 导入 JSON</Button>
+                      <Button size="sm" className="gap-2" onClick={saveDefaults}><Save className="w-4 h-4" /> 保存为默认</Button>
                     </div>
                   </div>
                 </CardContent>

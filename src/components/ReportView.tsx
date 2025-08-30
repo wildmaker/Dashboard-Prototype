@@ -5,11 +5,13 @@ import { Badge } from './ui/badge';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { ArrowLeft, FileText, Download, Save, Eye, Layout, Grid, Columns } from 'lucide-react';
+import { ArrowLeft, FileText, Download, Save, Eye, Layout, Grid, Columns, CheckCircle2, AlertTriangle, Circle } from 'lucide-react';
 import { useRouter } from './Router';
+import { useUncertainty } from './UncertaintyContext';
 
 export function ReportView() {
   const { navigate } = useRouter();
+  const { state: uncertaintyState, openDialog: openUncertainty } = useUncertainty();
   const [reportTemplate, setReportTemplate] = useState('standard');
   const [chartLayout, setChartLayout] = useState('2x2');
   const [reportTitle, setReportTitle] = useState('主轴回转精度检测报告');
@@ -145,6 +147,27 @@ export function ReportView() {
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">不确定度评估</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center gap-2 text-sm">
+                {uncertaintyState.status === 'filled' ? (
+                  <span className="inline-flex items-center gap-1 text-green-700"><CheckCircle2 className="w-4 h-4" /> 已填写</span>
+                ) : uncertaintyState.status === 'stale' ? (
+                  <span className="inline-flex items-center gap-1 text-amber-700"><AlertTriangle className="w-4 h-4" /> 需更新</span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-muted-foreground"><Circle className="w-4 h-4" /> 未填写</span>
+                )}
+              </div>
+              {uncertaintyState.lastUpdated && (
+                <div className="text-xs text-muted-foreground">上次更新：{new Date(uncertaintyState.lastUpdated).toLocaleString('zh-CN', { hour12: false })}</div>
+              )}
+              <Button variant="outline" size="sm" onClick={openUncertainty}>去填写/查看</Button>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Main Preview Area */}
@@ -175,6 +198,39 @@ export function ReportView() {
                           检测结果显示，径向回转误差为±2.5μm，轴向窜动为±1.8μm，倾角误差为±0.003°，
                           满足GB/T 17421.1-2020标准要求。
                         </p>
+                      </div>
+                    </section>
+
+                    {/* Uncertainty Assessment Results */}
+                    <section>
+                      <h2 className="text-lg font-medium mb-3 text-primary">测量不确定度评估</h2>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="border rounded-lg p-4">
+                          <h4 className="font-medium mb-2">结果</h4>
+                          <div className="text-sm space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground">径向不确定度</span>
+                              <span className="font-mono">{uncertaintyState.results.radial !== null ? `${uncertaintyState.results.radial} μm` : '--'}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground">轴向不确定度</span>
+                              <span className="font-mono">{uncertaintyState.results.axial !== null ? `${uncertaintyState.results.axial} μm` : '--'}</span>
+                            </div>
+                            {uncertaintyState.lastUpdated && (
+                              <div className="text-xs text-muted-foreground">更新时间：{new Date(uncertaintyState.lastUpdated).toLocaleString('zh-CN', { hour12: false })}</div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="border rounded-lg p-4">
+                          <h4 className="font-medium mb-2">参数摘要</h4>
+                          <div className="text-sm space-y-1">
+                            <div className="flex items-center justify-between"><span>传感器误差</span><span className="font-mono">{uncertaintyState.state.params.sensorError.value ?? '--'} {uncertaintyState.state.params.sensorError.unit}</span></div>
+                            <div className="flex items-center justify-between"><span>标准器误差</span><span className="font-mono">{uncertaintyState.state.params.standardError.value ?? '--'} {uncertaintyState.state.params.standardError.unit}</span></div>
+                            <div className="flex items-center justify-between"><span>环境误差</span><span className="font-mono">{uncertaintyState.state.params.environmentError.value ?? '--'} {uncertaintyState.state.params.environmentError.unit}</span></div>
+                            <div className="flex items-center justify-between"><span>径向不对中</span><span className="font-mono">{uncertaintyState.state.params.radialMisalignment.value ?? '--'} {uncertaintyState.state.params.radialMisalignment.unit}</span></div>
+                            <div className="flex items-center justify-between"><span>轴向不对中</span><span className="font-mono">{uncertaintyState.state.params.axialMisalignment.value ?? '--'} {uncertaintyState.state.params.axialMisalignment.unit}</span></div>
+                          </div>
+                        </div>
                       </div>
                     </section>
 
