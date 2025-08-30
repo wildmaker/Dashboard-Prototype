@@ -4,16 +4,25 @@ export type DistributionType = 'uniform' | 'normal' | 'triangular';
 
 export interface UncertaintyParam {
   value: number | null;
-  unit: string;
+  unit: string; // supports 'nm' | 'μm' | others (ignored in calc)
   distribution: DistributionType;
+}
+
+export interface UncertaintySimpleParam {
+  value: number | null;
+  unit: string; // e.g., '℃' | '%'
 }
 
 export interface UncertaintyParams {
   sensorError: UncertaintyParam;
   standardError: UncertaintyParam;
   environmentError: UncertaintyParam;
-  radialMisalignment: UncertaintyParam;
-  axialMisalignment: UncertaintyParam;
+  sensorMisalignmentRadial: UncertaintyParam;
+  sensorMisalignmentAxial: UncertaintyParam;
+  sensorLateralDisplacementRadial: UncertaintyParam;
+  sensorLateralDisplacementAxial: UncertaintyParam;
+  environmentTemperature: UncertaintySimpleParam;
+  environmentHumidity: UncertaintySimpleParam;
 }
 
 export interface UncertaintyResults {
@@ -54,23 +63,72 @@ interface UncertaintyContextType {
 }
 
 export const DEFAULT_PARAMS: UncertaintyParams = {
-  sensorError: { value: 0.5, unit: 'μm', distribution: 'uniform' },
-  standardError: { value: 0.3, unit: 'μm', distribution: 'uniform' },
-  environmentError: { value: 0.2, unit: 'μm', distribution: 'uniform' },
-  radialMisalignment: { value: 0.4, unit: 'μm', distribution: 'uniform' },
-  axialMisalignment: { value: 0.4, unit: 'μm', distribution: 'uniform' },
+  sensorError: { value: 500, unit: 'nm', distribution: 'uniform' },
+  standardError: { value: 300, unit: 'nm', distribution: 'uniform' },
+  environmentError: { value: 200, unit: 'nm', distribution: 'uniform' },
+  sensorMisalignmentRadial: { value: 400, unit: 'nm', distribution: 'uniform' },
+  sensorMisalignmentAxial: { value: 400, unit: 'nm', distribution: 'uniform' },
+  sensorLateralDisplacementRadial: { value: 200, unit: 'nm', distribution: 'uniform' },
+  sensorLateralDisplacementAxial: { value: 200, unit: 'nm', distribution: 'uniform' },
+  environmentTemperature: { value: 20, unit: '℃' },
+  environmentHumidity: { value: 45, unit: '%' },
 };
 
 const STORAGE_KEY = 'uncertainty.state.v1';
 const MAP_STORAGE_KEY = 'uncertainty.state.map.v1';
 const DEFAULTS_STORAGE_KEY = 'uncertainty.defaults.v1';
 
-function calcStdFromParam(param: UncertaintyParam): number | null {
-  if (param.value === null || isNaN(param.value)) return null;
-  const a = Math.abs(param.value);
+function toMicrometers(value: number, unit: string): number {
+  if (unit === 'nm') return value / 1000; // convert nm -> μm
+  return value; // assume μm or already μm-equivalent
+}
+
+function calcStdFromParam(param?: UncertaintyParam): number | null {
+  if (!param || param.value === null || isNaN(param.value as any)) return null;
+  const a = Math.abs(toMicrometers(param.value, param.unit));
   if (param.distribution === 'uniform') return a / Math.sqrt(3);
   if (param.distribution === 'triangular') return a / Math.sqrt(6);
   return a; // normal: treat value as standard deviation
+}
+
+function normalizeParams(input: any): UncertaintyParams {
+  const d = DEFAULT_PARAMS;
+  const safe = (p: any, def: UncertaintyParam): UncertaintyParam => ({
+    value: typeof p?.value === 'number' ? p.value : def.value,
+    unit: typeof p?.unit === 'string' ? p.unit : def.unit,
+    distribution: (p?.distribution === 'uniform' || p?.distribution === 'normal' || p?.distribution === 'triangular') ? p.distribution : def.distribution,
+  });
+  const simple = (p: any, def: UncertaintySimpleParam): UncertaintySimpleParam => ({
+    value: typeof p?.value === 'number' ? p.value : def.value,
+    unit: typeof p?.unit === 'string' ? p.unit : def.unit,
+  });
+
+  // Backward compat field mapping
+  const legacyRadial = input?.radialMisalignment ?? input?.sensorMisalignmentRadial;
+  const legacyAxial = input?.axialMisalignment ?? input?.sensorMisalignmentAxial;
+
+  return {
+    sensorError: safe(input?.sensorError, d.sensorError),
+    standardError: safe(input?.standardError, d.standardError),
+    environmentError: safe(input?.environmentError, d.environmentError),
+    sensorMisalignmentRadial: safe(legacyRadial, d.sensorMisalignmentRadial),
+    sensorMisalignmentAxial: safe(legacyAxial, d.sensorMisalignmentAxial),
+    sensorLateralDisplacementRadial: safe(input?.sensorLateralDisplacementRadial, d.sensorLateralDisplacementRadial),
+    sensorLateralDisplacementAxial: safe(input?.sensorLateralDisplacementAxial, d.sensorLateralDisplacementAxial),
+    environmentTemperature: simple(input?.environmentTemperature, d.environmentTemperature),
+    environmentHumidity: simple(input?.environmentHumidity, d.environmentHumidity),
+  };
+}
+
+function normalizeState(s: UncertaintyState | undefined): UncertaintyState {
+  const params = normalizeParams(s?.params);
+  const results = computeResults(params);
+  return {
+    status: s?.status ?? 'empty',
+    lastUpdated: s?.lastUpdated ?? null,
+    params,
+    results,
+  };
 }
 
 function computeResults(params: UncertaintyParams): UncertaintyResults {
@@ -78,16 +136,18 @@ function computeResults(params: UncertaintyParams): UncertaintyResults {
     sensor: calcStdFromParam(params.sensorError),
     standard: calcStdFromParam(params.standardError),
     env: calcStdFromParam(params.environmentError),
-    radial: calcStdFromParam(params.radialMisalignment),
-    axial: calcStdFromParam(params.axialMisalignment),
-  };
+    misRadial: calcStdFromParam(params.sensorMisalignmentRadial),
+    misAxial: calcStdFromParam(params.sensorMisalignmentAxial),
+    latRadial: calcStdFromParam(params.sensorLateralDisplacementRadial),
+    latAxial: calcStdFromParam(params.sensorLateralDisplacementAxial),
+  } as const;
 
   const anyNull = Object.values(stds).some((v) => v === null);
   if (anyNull) return { radial: null, axial: null, valid: false };
 
   const rss = (...vals: number[]) => Math.sqrt(vals.reduce((s, v) => s + v * v, 0));
-  const radial = rss(stds.sensor!, stds.standard!, stds.env!, stds.radial!);
-  const axial = rss(stds.sensor!, stds.standard!, stds.env!, stds.axial!);
+  const radial = rss(stds.sensor!, stds.standard!, stds.env!, stds.misRadial!, stds.latRadial!);
+  const axial = rss(stds.sensor!, stds.standard!, stds.env!, stds.misAxial!, stds.latAxial!);
   return { radial: Number(radial.toFixed(3)), axial: Number(axial.toFixed(3)), valid: true };
 }
 
@@ -116,7 +176,9 @@ export function UncertaintyProvider({ children }: { children?: React.ReactNode }
         try {
           const parsedMap = JSON.parse(rawMap) as Record<string, UncertaintyState>;
           if (parsedMap && typeof parsedMap === 'object') {
-            setStateMap(parsedMap);
+            const normalized: Record<string, UncertaintyState> = {};
+            Object.entries(parsedMap).forEach(([k, v]) => { normalized[k] = normalizeState(v); });
+            setStateMap(normalized);
           }
         } catch {}
       }
@@ -125,7 +187,7 @@ export function UncertaintyProvider({ children }: { children?: React.ReactNode }
         try {
           const legacy = JSON.parse(raw) as UncertaintyState;
           if (legacy && legacy.params) {
-            setStateMap((prev) => ({ ...prev, __legacy__: legacy }));
+            setStateMap((prev) => ({ ...prev, __legacy__: normalizeState(legacy) }));
           }
         } catch {}
       }
@@ -147,7 +209,7 @@ export function UncertaintyProvider({ children }: { children?: React.ReactNode }
   };
 
   const activeKey = currentKey ?? '__legacy__';
-  const activeEntry = stateMap[activeKey] || { status: 'empty' as UncertaintyStatus, lastUpdated: null, params: defaults.params, results: computeResults(defaults.params) };
+  const activeEntry = stateMap[activeKey] || normalizeState({ status: 'empty' as UncertaintyStatus, lastUpdated: null, params: defaults.params, results: computeResults(defaults.params) });
 
   const results = useMemo(() => computeResults(activeEntry.params), [activeEntry.params]);
 
@@ -230,10 +292,20 @@ export function UncertaintyProvider({ children }: { children?: React.ReactNode }
 
   // Defaults helpers
   const loadDefaultsIntoParams = () => {
-    setParamsState(() => {
-      const next = defaults.params || DEFAULT_PARAMS;
-      if (status === 'filled') setStatus('stale');
-      return next;
+    const key = activeKey;
+    ensureKey(key);
+    setStateMap((prev) => {
+      const current = prev[key] || activeEntry;
+      const nextParams = defaults.params || DEFAULT_PARAMS;
+      const nextState: UncertaintyState = {
+        ...current,
+        status: current.status === 'filled' ? 'stale' : current.status,
+        params: nextParams,
+        results: computeResults(nextParams),
+      };
+      const nextMap = { ...prev, [key]: nextState };
+      persistMap(nextMap);
+      return nextMap;
     });
   };
 

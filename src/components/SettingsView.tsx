@@ -200,7 +200,7 @@ export function SettingsView() {
 
       <div className="p-6">
         <div className="max-w-6xl mx-auto">
-          <Tabs value={isWizardActive && wizardTab ? wizardTab : activeTab} onValueChange={setActiveTab}>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid grid-cols-5 w-full">
               <TabsTrigger value="analysis" className="gap-2">
                 <Gauge className="w-4 h-4" />
@@ -738,10 +738,10 @@ export function SettingsView() {
                         <div className="col-span-4 text-sm">径向数值</div>
                         <div className="col-span-8 flex items-center gap-2">
                           <Input
-                            value={defaults.params.radialMisalignment.value ?? ''}
+                            value={defaults.params.sensorMisalignmentRadial.value ?? ''}
                             onChange={(e) => updateDefaults(prev => ({
                               ...prev,
-                              radialMisalignment: { ...prev.radialMisalignment, value: e.target.value === '' ? null : Number(e.target.value) }
+                              sensorMisalignmentRadial: { ...prev.sensorMisalignmentRadial, value: e.target.value === '' ? null : Number(e.target.value) }
                             }))}
                           />
                           <span className="text-xs text-muted-foreground">μm</span>
@@ -751,10 +751,10 @@ export function SettingsView() {
                         <div className="col-span-4 text-sm">轴向数值</div>
                         <div className="col-span-8 flex items-center gap-2">
                           <Input
-                            value={defaults.params.axialMisalignment.value ?? ''}
+                            value={defaults.params.sensorMisalignmentAxial.value ?? ''}
                             onChange={(e) => updateDefaults(prev => ({
                               ...prev,
-                              axialMisalignment: { ...prev.axialMisalignment, value: e.target.value === '' ? null : Number(e.target.value) }
+                              sensorMisalignmentAxial: { ...prev.sensorMisalignmentAxial, value: e.target.value === '' ? null : Number(e.target.value) }
                             }))}
                           />
                           <span className="text-xs text-muted-foreground">μm</span>
@@ -763,9 +763,9 @@ export function SettingsView() {
                       <div className="grid grid-cols-12 gap-3 items-center">
                         <div className="col-span-4 text-sm">径向分布</div>
                         <div className="col-span-8">
-                          <Select value={defaults.params.radialMisalignment.distribution} onValueChange={(v) => updateDefaults(prev => ({
+                          <Select value={defaults.params.sensorMisalignmentRadial.distribution} onValueChange={(v) => updateDefaults(prev => ({
                             ...prev,
-                            radialMisalignment: { ...prev.radialMisalignment, distribution: v as any }
+                            sensorMisalignmentRadial: { ...prev.sensorMisalignmentRadial, distribution: v as any }
                           }))}>
                             <SelectTrigger>
                               <SelectValue />
@@ -781,9 +781,9 @@ export function SettingsView() {
                       <div className="grid grid-cols-12 gap-3 items-center">
                         <div className="col-span-4 text-sm">轴向分布</div>
                         <div className="col-span-8">
-                          <Select value={defaults.params.axialMisalignment.distribution} onValueChange={(v) => updateDefaults(prev => ({
+                          <Select value={defaults.params.sensorMisalignmentAxial.distribution} onValueChange={(v) => updateDefaults(prev => ({
                             ...prev,
-                            axialMisalignment: { ...prev.axialMisalignment, distribution: v as any }
+                            sensorMisalignmentAxial: { ...prev.sensorMisalignmentAxial, distribution: v as any }
                           }))}>
                             <SelectTrigger>
                               <SelectValue />

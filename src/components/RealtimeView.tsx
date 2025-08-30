@@ -234,7 +234,7 @@ export function RealtimeView() {
   const { navigate } = useRouter();
   const { hardwareConnected, isChecking, setWorkbenchSourceType } = useSystem();
   const { startWizard } = useWizard();
-  const { state: uncertaintyState, openDialog: openUncertainty } = useUncertainty();
+  const { state: uncertaintyState, openDialog: openUncertainty, setAssessmentKey } = useUncertainty();
   const [isPlaying, setIsPlaying] = useState(true);
   const [activeDataSource, setActiveDataSource] = useState('realtime-current');
   const [layoutMode, setLayoutMode] = useState<'grid' | 'single'>('grid');
@@ -412,6 +412,16 @@ export function RealtimeView() {
     if (!currentDataSource) return;
     setWorkbenchSourceType(currentDataSource.type);
   }, [currentDataSource, setWorkbenchSourceType]);
+
+  // Bind uncertainty assessment key to current history data source
+  useEffect(() => {
+    if (!currentDataSource) return;
+    if (currentDataSource.type === 'history') {
+      setAssessmentKey(currentDataSource.id);
+    } else {
+      setAssessmentKey(null);
+    }
+  }, [currentDataSource?.id, currentDataSource?.type, setAssessmentKey]);
 
   // If user switches from离线 to 实时数据源 while硬件未连接, show the same prompt
   useEffect(() => {

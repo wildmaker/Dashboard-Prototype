@@ -27,7 +27,7 @@ export default function UncertaintyDialog() {
           />
           <span className="text-xs text-muted-foreground whitespace-nowrap">{unit}</span>
           <Select value={distribution} onValueChange={(v) => onDist(v as any)}>
-            <SelectTrigger>
+            <SelectTrigger className="w-28">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -43,12 +43,12 @@ export default function UncertaintyDialog() {
 
   return (
     <Dialog open={isDialogOpen} onOpenChange={(o) => !o && closeDialog()}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-5xl">
         <DialogHeader>
           <DialogTitle>不确定度评估 – 参数输入与计算</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-3">
+          <div className="md:col-span-2 grid gap-3 grid-cols-1 sm:grid-cols-2">
             <ParamRow
               label="传感器误差"
               value={p.sensorError.value}
@@ -74,23 +74,55 @@ export default function UncertaintyDialog() {
               onDist={(d) => setParams(prev => ({ ...prev, environmentError: { ...prev.environmentError, distribution: d } }))}
             />
             <ParamRow
-              label="径向不对中/侧向"
-              value={p.radialMisalignment.value}
-              unit={p.radialMisalignment.unit}
-              distribution={p.radialMisalignment.distribution}
-              onChange={(n) => setParams(prev => ({ ...prev, radialMisalignment: { ...prev.radialMisalignment, value: n } }))}
-              onDist={(d) => setParams(prev => ({ ...prev, radialMisalignment: { ...prev.radialMisalignment, distribution: d } }))}
+              label="传感器不对中误差 - 径向"
+              value={p.sensorMisalignmentRadial.value}
+              unit={p.sensorMisalignmentRadial.unit}
+              distribution={p.sensorMisalignmentRadial.distribution}
+              onChange={(n) => setParams(prev => ({ ...prev, sensorMisalignmentRadial: { ...prev.sensorMisalignmentRadial, value: n } }))}
+              onDist={(d) => setParams(prev => ({ ...prev, sensorMisalignmentRadial: { ...prev.sensorMisalignmentRadial, distribution: d } }))}
             />
             <ParamRow
-              label="轴向不对中/侧向"
-              value={p.axialMisalignment.value}
-              unit={p.axialMisalignment.unit}
-              distribution={p.axialMisalignment.distribution}
-              onChange={(n) => setParams(prev => ({ ...prev, axialMisalignment: { ...prev.axialMisalignment, value: n } }))}
-              onDist={(d) => setParams(prev => ({ ...prev, axialMisalignment: { ...prev.axialMisalignment, distribution: d } }))}
+              label="传感器不对中误差 - 轴向"
+              value={p.sensorMisalignmentAxial.value}
+              unit={p.sensorMisalignmentAxial.unit}
+              distribution={p.sensorMisalignmentAxial.distribution}
+              onChange={(n) => setParams(prev => ({ ...prev, sensorMisalignmentAxial: { ...prev.sensorMisalignmentAxial, value: n } }))}
+              onDist={(d) => setParams(prev => ({ ...prev, sensorMisalignmentAxial: { ...prev.sensorMisalignmentAxial, distribution: d } }))}
+            />
+            <ParamRow
+              label="传感器侧向位移 - 径向"
+              value={p.sensorLateralDisplacementRadial.value}
+              unit={p.sensorLateralDisplacementRadial.unit}
+              distribution={p.sensorLateralDisplacementRadial.distribution}
+              onChange={(n) => setParams(prev => ({ ...prev, sensorLateralDisplacementRadial: { ...prev.sensorLateralDisplacementRadial, value: n } }))}
+              onDist={(d) => setParams(prev => ({ ...prev, sensorLateralDisplacementRadial: { ...prev.sensorLateralDisplacementRadial, distribution: d } }))}
+            />
+            <ParamRow
+              label="传感器侧向位移 - 轴向"
+              value={p.sensorLateralDisplacementAxial.value}
+              unit={p.sensorLateralDisplacementAxial.unit}
+              distribution={p.sensorLateralDisplacementAxial.distribution}
+              onChange={(n) => setParams(prev => ({ ...prev, sensorLateralDisplacementAxial: { ...prev.sensorLateralDisplacementAxial, value: n } }))}
+              onDist={(d) => setParams(prev => ({ ...prev, sensorLateralDisplacementAxial: { ...prev.sensorLateralDisplacementAxial, distribution: d } }))}
+            />
+            <ParamRow
+              label="温度"
+              value={p.environmentTemperature.value}
+              unit={p.environmentTemperature.unit}
+              distribution={"uniform"}
+              onChange={(n) => setParams(prev => ({ ...prev, environmentTemperature: { ...prev.environmentTemperature, value: n } }))}
+              onDist={() => {}}
+            />
+            <ParamRow
+              label="湿度"
+              value={p.environmentHumidity.value}
+              unit={p.environmentHumidity.unit}
+              distribution={"uniform"}
+              onChange={(n) => setParams(prev => ({ ...prev, environmentHumidity: { ...prev.environmentHumidity, value: n } }))}
+              onDist={() => {}}
             />
           </div>
-          <div className="space-y-3">
+          <div className="space-y-3 md:col-span-1">
             <div className="p-4 border rounded-lg">
               <div className="text-sm mb-1">径向不确定度</div>
               <div className="text-xl font-semibold">{state.results.radial ?? '--'} μm</div>

@@ -125,6 +125,7 @@ export function useWizardSettingsTab(): string | undefined {
     }
   }, [isActive, currentStep, settingsTabForStep]);
 
+  // Only provide an initial suggestion; consumers should not lock to this value.
   return tab;
 }
 
