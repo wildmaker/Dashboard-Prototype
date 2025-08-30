@@ -133,8 +133,12 @@ export function WizardOverlay() {
           <Button variant="outline" size="sm" onClick={goNext}>
             跳过
           </Button>
-          <Button variant="default" size="sm" onClick={goNext}>
-            下一步 <ChevronRight className="w-4 h-4 ml-1" />
+          <Button
+            variant="default"
+            size="sm"
+            onClick={currentStep === totalSteps ? handleClose : goNext}
+          >
+            {currentStep === totalSteps ? '完成向导' : '下一步'} <ChevronRight className="w-4 h-4 ml-1" />
           </Button>
         </div>
       </div>

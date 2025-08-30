@@ -201,7 +201,7 @@ export function SettingsView() {
       <div className="p-6">
         <div className="max-w-6xl mx-auto">
           <Tabs value={isWizardActive && wizardTab ? wizardTab : activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-6 w-full">
+            <TabsList className="grid grid-cols-5 w-full">
               <TabsTrigger value="analysis" className="gap-2">
                 <Gauge className="w-4 h-4" />
                 分析参数

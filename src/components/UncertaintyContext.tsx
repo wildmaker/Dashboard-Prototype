@@ -40,6 +40,9 @@ interface UncertaintyContextType {
   openDialog: () => void;
   closeDialog: () => void;
   isDialogOpen: boolean;
+  // Per-report binding
+  currentKey: string | null;
+  setAssessmentKey: (key: string | null) => void;
   // Defaults management
   defaults: { params: UncertaintyParams; lastModified: string | null };
   loadDefaultsIntoParams: () => void;
@@ -59,6 +62,7 @@ export const DEFAULT_PARAMS: UncertaintyParams = {
 };
 
 const STORAGE_KEY = 'uncertainty.state.v1';
+const MAP_STORAGE_KEY = 'uncertainty.state.map.v1';
 const DEFAULTS_STORAGE_KEY = 'uncertainty.defaults.v1';
 
 function calcStdFromParam(param: UncertaintyParam): number | null {
@@ -91,15 +95,15 @@ const UncertaintyContext = createContext<UncertaintyContextType | undefined>(und
 
 export function UncertaintyProvider({ children }: { children?: React.ReactNode }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [params, setParamsState] = useState<UncertaintyParams>(DEFAULT_PARAMS);
-  const [status, setStatus] = useState<UncertaintyStatus>('empty');
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [currentKey, setCurrentKey] = useState<string | null>(null);
+  const [stateMap, setStateMap] = useState<Record<string, UncertaintyState>>({});
   const [defaults, setDefaults] = useState<{ params: UncertaintyParams; lastModified: string | null }>({ params: DEFAULT_PARAMS, lastModified: null });
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       const rawDefaults = localStorage.getItem(DEFAULTS_STORAGE_KEY);
+      const rawMap = localStorage.getItem(MAP_STORAGE_KEY);
       if (rawDefaults) {
         try {
           const parsedDefaults = JSON.parse(rawDefaults) as { params: UncertaintyParams; lastModified: string | null };
@@ -108,65 +112,121 @@ export function UncertaintyProvider({ children }: { children?: React.ReactNode }
           }
         } catch {}
       }
+      if (rawMap) {
+        try {
+          const parsedMap = JSON.parse(rawMap) as Record<string, UncertaintyState>;
+          if (parsedMap && typeof parsedMap === 'object') {
+            setStateMap(parsedMap);
+          }
+        } catch {}
+      }
+      // Backward-compat: migrate legacy single state into a generic key
       if (raw) {
-        const parsed = JSON.parse(raw) as UncertaintyState;
-        if (parsed && parsed.params) {
-          setParamsState(parsed.params);
-          setStatus(parsed.status);
-          setLastUpdated(parsed.lastUpdated);
-        }
-      } else {
-        // If no current state persisted, initialize params from defaults if available
-        setParamsState((prev) => defaults.params || prev);
+        try {
+          const legacy = JSON.parse(raw) as UncertaintyState;
+          if (legacy && legacy.params) {
+            setStateMap((prev) => ({ ...prev, __legacy__: legacy }));
+          }
+        } catch {}
       }
     } catch {}
   }, []);
 
-  const results = useMemo(() => computeResults(params), [params]);
+  const ensureKey = (key: string) => {
+    if (!stateMap[key]) {
+      const initialParams = defaults.params || DEFAULT_PARAMS;
+      const initial: UncertaintyState = {
+        status: 'empty',
+        lastUpdated: null,
+        params: initialParams,
+        results: computeResults(initialParams),
+      };
+      setStateMap((prev) => ({ ...prev, [key]: initial }));
+      try { localStorage.setItem(MAP_STORAGE_KEY, JSON.stringify({ ...stateMap, [key]: initial })); } catch {}
+    }
+  };
+
+  const activeKey = currentKey ?? '__legacy__';
+  const activeEntry = stateMap[activeKey] || { status: 'empty' as UncertaintyStatus, lastUpdated: null, params: defaults.params, results: computeResults(defaults.params) };
+
+  const results = useMemo(() => computeResults(activeEntry.params), [activeEntry.params]);
 
   const state: UncertaintyState = useMemo(
-    () => ({ status, lastUpdated, params, results }),
-    [status, lastUpdated, params, results]
+    () => ({ status: activeEntry.status, lastUpdated: activeEntry.lastUpdated, params: activeEntry.params, results }),
+    [activeEntry.status, activeEntry.lastUpdated, activeEntry.params, results]
   );
 
-  const persist = (next: UncertaintyState) => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
+  const persistMap = (nextMap: Record<string, UncertaintyState>) => {
+    try { localStorage.setItem(MAP_STORAGE_KEY, JSON.stringify(nextMap)); } catch {}
   };
 
   const setParams = (updater: (prev: UncertaintyParams) => UncertaintyParams) => {
-    setParamsState((prev) => {
-      const next = updater(prev);
-      if (status === 'filled') setStatus('stale');
-      return next;
+    const key = activeKey;
+    ensureKey(key);
+    setStateMap((prev) => {
+      const current = prev[key] || activeEntry;
+      const nextParams = updater(current.params);
+      const nextState: UncertaintyState = {
+        ...current,
+        status: current.status === 'filled' ? 'stale' : current.status,
+        params: nextParams,
+        results: computeResults(nextParams),
+      };
+      const nextMap = { ...prev, [key]: nextState };
+      persistMap(nextMap);
+      return nextMap;
     });
   };
 
   const save = () => {
+    const key = activeKey;
+    ensureKey(key);
     const now = new Date().toISOString();
-    const next: UncertaintyState = {
-      status: results.valid ? 'filled' : 'empty',
-      lastUpdated: results.valid ? now : null,
-      params,
-      results,
-    };
-    setStatus(next.status);
-    setLastUpdated(next.lastUpdated);
-    persist(next);
+    setStateMap((prev) => {
+      const current = prev[key] || activeEntry;
+      const computed = computeResults(current.params);
+      const next: UncertaintyState = {
+        status: computed.valid ? 'filled' : 'empty',
+        lastUpdated: computed.valid ? now : null,
+        params: current.params,
+        results: computed,
+      };
+      const nextMap = { ...prev, [key]: next };
+      persistMap(nextMap);
+      return nextMap;
+    });
   };
 
   const resetToDefaults = () => {
-    setParamsState(DEFAULT_PARAMS);
-    setStatus('empty');
-    setLastUpdated(null);
-    persist({ status: 'empty', lastUpdated: null, params: DEFAULT_PARAMS, results: computeResults(DEFAULT_PARAMS) });
+    const key = activeKey;
+    ensureKey(key);
+    setStateMap((prev) => {
+      const nextState: UncertaintyState = { status: 'empty', lastUpdated: null, params: DEFAULT_PARAMS, results: computeResults(DEFAULT_PARAMS) };
+      const nextMap = { ...prev, [key]: nextState };
+      persistMap(nextMap);
+      return nextMap;
+    });
   };
 
   const markStale = () => {
-    if (status === 'filled') setStatus('stale');
+    const key = activeKey;
+    setStateMap((prev) => {
+      const current = prev[key] || activeEntry;
+      if (current.status !== 'filled') return prev;
+      const nextState: UncertaintyState = { ...current, status: 'stale' };
+      const nextMap = { ...prev, [key]: nextState };
+      persistMap(nextMap);
+      return nextMap;
+    });
   };
 
   const openDialog = () => setIsDialogOpen(true);
   const closeDialog = () => setIsDialogOpen(false);
+
+  const setAssessmentKey = (key: string | null) => {
+    setCurrentKey(key);
+    if (key) ensureKey(key);
+  };
 
   // Defaults helpers
   const loadDefaultsIntoParams = () => {
@@ -224,6 +284,8 @@ export function UncertaintyProvider({ children }: { children?: React.ReactNode }
     openDialog,
     closeDialog,
     isDialogOpen,
+    currentKey,
+    setAssessmentKey,
     defaults,
     loadDefaultsIntoParams,
     updateDefaults,
