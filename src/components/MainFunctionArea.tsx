@@ -1,8 +1,9 @@
 import React from 'react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
-import { Gauge, Box, ChevronRight, LayoutDashboard, Settings, LogOut } from 'lucide-react';
+import { Gauge, Box, ChevronRight, LayoutDashboard, Settings, LogOut, Rocket } from 'lucide-react';
 import { useRouter } from './Router';
+import { useWizard } from './WizardContext';
 
 interface FunctionCardProps {
   icon: React.ReactNode;
@@ -15,10 +16,10 @@ interface FunctionCardProps {
 function FunctionCard({ icon, title, description, onClick, isNew }: FunctionCardProps) {
   return (
     <Card 
-      className="relative group hover:shadow-lg transition-all duration-200 cursor-pointer border-2 hover:border-primary/20 bg-gradient-to-br from-white to-gray-50/50"
+      className="relative group hover:shadow-lg transition-all duration-200 cursor-pointer border-2 hover:border-primary/20 bg-gradient-to-br from-white to-gray-50/50 h-full"
       onClick={onClick}
     >
-      <CardContent className="p-8 flex flex-col items-center text-center space-y-4">
+      <CardContent className="p-8 flex flex-col items-center text-center space-y-4 h-full">
         {isNew && (
           <div className="absolute top-4 right-4 bg-destructive text-destructive-foreground px-2 py-1 rounded-full text-xs">
             新增
@@ -47,6 +48,7 @@ function FunctionCard({ icon, title, description, onClick, isNew }: FunctionCard
 
 export function MainFunctionArea() {
   const { navigate } = useRouter();
+  const { startWizard } = useWizard();
   
   const functions = [
     {
@@ -78,7 +80,7 @@ export function MainFunctionArea() {
 
   return (
     <div className="p-8 min-h-[60vh] flex flex-col">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 justify-center justify-items-center">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mx-auto w-fit">
         {functions.map((func, index) => {
           const card = (
             <FunctionCard
@@ -90,17 +92,23 @@ export function MainFunctionArea() {
             />
           );
           return (
-            <div key={index}>
+            <div key={index} className="h-full w-[200px] md:w-[220px]">
               {card}
             </div>
           );
         })}
       </div>
       <div className="mt-auto pt-8 pb-6 flex items-center justify-center">
-        <Button variant="outline" size="lg" className="gap-2">
-          <LogOut className="w-5 h-5" />
-          退出
-        </Button>
+        <div className="flex gap-3">
+          <Button variant="default" size="lg" className="gap-2" onClick={() => startWizard(1)}>
+            <Rocket className="w-5 h-5" />
+            启动安装向导
+          </Button>
+          <Button variant="outline" size="lg" className="gap-2">
+            <LogOut className="w-5 h-5" />
+            退出
+          </Button>
+        </div>
       </div>
     </div>
   );

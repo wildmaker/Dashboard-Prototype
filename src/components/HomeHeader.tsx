@@ -5,7 +5,7 @@ import { LogOut } from 'lucide-react';
 export function HomeHeader() {
   return (
     <header className="bg-white border-b border-border">
-      <div className="max-w-6xl mx-auto px-6 py-6 grid grid-cols-3 items-center">
+      <div className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-3 items-center">
         <div></div>
         <div className="justify-self-center text-center">
           <div className="mx-auto mb-2 w-12 h-12 bg-primary rounded-lg flex items-center justify-center">

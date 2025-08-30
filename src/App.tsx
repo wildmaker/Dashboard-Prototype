@@ -13,23 +13,32 @@ import { OfflineChartView } from './components/OfflineChartView';
 import { ReportView } from './components/ReportView';
 import { SettingsView } from './components/SettingsView';
 import { Toaster } from 'sonner';
+import { WizardProvider } from './components/WizardContext';
+import { WizardOverlay } from './components/WizardOverlay';
+import { useWizard } from './components/WizardContext';
 
 function MainApp() {
   const { currentRoute } = useRouter();
+  const { isActive } = useWizard();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className={`min-h-screen ${isActive ? 'bg-black' : 'bg-background'}`}>
       {currentRoute === 'dashboard' ? (
         <>
           <HomeHeader />
           <TopStatusBar />
-          <div className="max-w-6xl mx-auto px-6">
+          <div className="max-w-7xl mx-auto px-4">
             <MainFunctionArea />
           </div>
         </>
       ) : (
         <>
-          <TopNavigation />
+          {/* Non-dashboard layout stack: Wizard bar on top, then TopNavigation */}
+          <div className="flex flex-col">
+            {isActive && <WizardOverlay />}
+            <TopNavigation />
+          </div>
+          {/* route views remain below */}
           {currentRoute === 'instrument-debug' ? (
             <InstrumentDebugView />
           ) : currentRoute === '3d-guide' ? (
@@ -56,7 +65,9 @@ export default function App() {
   return (
     <SystemProvider>
       <RouterProvider>
-        <MainApp />
+        <WizardProvider>
+          <MainApp />
+        </WizardProvider>
       </RouterProvider>
     </SystemProvider>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Badge } from './ui/badge';
 import { ArrowLeft, Settings, Gauge, Cpu, Database, Target, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useRouter } from './Router';
+import { useWizard, useWizardSettingsTab } from './WizardContext';
 
 interface ConfigItemProps {
   label: string;
@@ -48,6 +49,13 @@ function ConfigItem({ label, value, unit, isValid, onChange, error }: ConfigItem
 export function SettingsView() {
   const { navigate } = useRouter();
   const [activeTab, setActiveTab] = useState('analysis');
+  const wizardTab = useWizardSettingsTab();
+  const { isActive: isWizardActive } = useWizard();
+  useEffect(() => {
+    if (wizardTab) {
+      setActiveTab(wizardTab);
+    }
+  }, [wizardTab]);
   
   // Analysis parameters
   const [samplingFreq, setSamplingFreq] = useState('1024');
@@ -107,7 +115,7 @@ export function SettingsView() {
 
       <div className="p-6">
         <div className="max-w-6xl mx-auto">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <Tabs value={isWizardActive && wizardTab ? wizardTab : activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid grid-cols-5 w-full">
               <TabsTrigger value="analysis" className="gap-2">
                 <Gauge className="w-4 h-4" />

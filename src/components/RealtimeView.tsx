@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
- 
+
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from './ui/select';
 
 import { Play, Pause, Database, FileText, FolderOpen, Circle, ChevronDown, LayoutGrid, Maximize2, Save, Printer } from 'lucide-react';
@@ -432,6 +432,14 @@ export function RealtimeView() {
     setActiveDataSource(id);
   };
 
+  const handlePrintReport = () => {
+    try {
+      window.print();
+    } catch (e) {
+      console.error('打印失败', e);
+    }
+  };
+
   const handleSaveCurrentRun = () => {
     if (currentDataSource?.type !== 'realtime') return;
     const id = `history-${Date.now()}`;
@@ -531,6 +539,25 @@ export function RealtimeView() {
       ? '径向误差｜三点法'
       : t === 'radial-donaldson'
       ? '径向误差｜唐纳森反转法'
+      : t === 'axial'
+      ? '轴向误差'
+      : t === 'tilt'
+      ? '倾角误差'
+      : t === 'waveform'
+      ? '波形显示'
+      : t === 'spectrum'
+      ? '频谱分析（FFT）'
+      : '3D模型展示';
+
+  const getDisplayLabel = (t: ChartType) =>
+    t === 'radial-single'
+      ? '径向误差 - 单点法'
+      : t === 'radial-double'
+      ? '径向误差 - 双点垂直法'
+      : t === 'radial-triple'
+      ? '径向误差 - 三点法'
+      : t === 'radial-donaldson'
+      ? '径向误差 - 唐纳森反转法'
       : t === 'axial'
       ? '轴向误差'
       : t === 'tilt'
@@ -709,6 +736,7 @@ export function RealtimeView() {
           </div>
           
           <div className="flex items-center gap-3">
+            {currentDataSource?.type === 'realtime' && (
             <Button 
               variant={isPlaying ? "default" : "outline"} 
               size="sm" 
@@ -716,28 +744,31 @@ export function RealtimeView() {
               className="gap-2"
             >
               {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-              {isPlaying ? '暂停采集' : '继续采集'}
+                {isPlaying ? '暂停采集' : '继续采集'}
             </Button>
-            {/* Reset button removed per design */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              disabled={currentDataSource?.type === 'realtime' && isPlaying}
-              onClick={() => (currentDataSource?.type === 'realtime' ? handleSaveCurrentRun() : navigate('report'))}
-            >
-              <Save className="w-4 h-4" />
-              {currentDataSource?.type === 'realtime' ? '保存快照' : '保存'}
-            </Button>
+            )}
+            {/* Save button only in realtime mode */}
+            {currentDataSource?.type === 'realtime' && (
+              <Button
+                variant={!isPlaying ? 'default' : 'outline'}
+                size="sm"
+                className="gap-2"
+                disabled={isPlaying}
+                onClick={handleSaveCurrentRun}
+              >
+                <Save className="w-4 h-4" />
+                {'保存快照'}
+              </Button>
+            )}
             {currentDataSource?.type !== 'realtime' && (
-              <Button variant="outline" size="sm" className="gap-2" onClick={() => navigate('report')}>
+              <Button variant="default" size="sm" className="gap-2" onClick={handlePrintReport}>
                 <Printer className="w-4 h-4" />
                 打印报告
               </Button>
             )}
           </div>
         </div>
-      </div>
+        </div>
 
       <div className="flex h-[calc(100vh-73px)]">
         <div className="flex-1 p-4">
@@ -746,7 +777,7 @@ export function RealtimeView() {
               {layoutMode === 'single' && (
                 <Select value={singleView} onValueChange={(v) => setSingleView(v as ChartType)}>
                   <SelectTrigger className="w-56 ml-2">
-                    <SelectValue placeholder="选择视图" />
+                    <SelectValue>{getDisplayLabel(singleView)}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
@@ -779,9 +810,9 @@ export function RealtimeView() {
                   <div className="flex items-center gap-2">
                     <Select value={panelTypes[1]} onValueChange={(v) => setPanelTypes((p) => ({ ...p, 1: v as ChartType }))}>
                       <SelectTrigger className="w-56 h-7">
-                        <SelectValue />
+                        <SelectValue>{getDisplayLabel(panelTypes[1])}</SelectValue>
                       </SelectTrigger>
-                      <SelectContent>
+                    <SelectContent>
                         <SelectGroup>
                           <SelectLabel>径向误差</SelectLabel>
                           <SelectItem value="radial-single">单点法</SelectItem>
@@ -796,8 +827,8 @@ export function RealtimeView() {
                         <SelectItem value="spectrum">频谱分析（FFT）</SelectItem>
                         <SelectSeparator />
                         <SelectItem value="3d">3D模型展示</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    </SelectContent>
+                  </Select>
                     <span className="text-xs text-muted-foreground">通道</span>
                     <Select value={panelChannels[1]} onValueChange={(v) => setPanelChannels((p) => ({ ...p, 1: v as Channel }))}>
                       <SelectTrigger className="w-28 h-7">
@@ -812,10 +843,10 @@ export function RealtimeView() {
                         </SelectGroup>
                       </SelectContent>
                     </Select>
-                    <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => { setLayoutMode('single'); setSingleView(panelTypes[1]); }}>
-                      <Maximize2 className="w-4 h-4" />
-                    </Button>
                   </div>
+                  <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => { setLayoutMode('single'); setSingleView(panelTypes[1]); }}>
+                    <Maximize2 className="w-4 h-4" />
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent className="h-[420px] p-0">
@@ -827,12 +858,12 @@ export function RealtimeView() {
             <Card>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
                     <Select value={panelTypes[2]} onValueChange={(v) => setPanelTypes((p) => ({ ...p, 2: v as ChartType }))}>
                       <SelectTrigger className="w-56 h-7">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
+                        <SelectValue>{getDisplayLabel(panelTypes[2])}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
                         <SelectGroup>
                           <SelectLabel>径向误差</SelectLabel>
                           <SelectItem value="radial-single">单点法</SelectItem>
@@ -841,32 +872,32 @@ export function RealtimeView() {
                           <SelectItem value="radial-donaldson">唐纳森反转法</SelectItem>
                         </SelectGroup>
                         <SelectSeparator />
-                        <SelectItem value="axial">轴向误差</SelectItem>
-                        <SelectItem value="tilt">倾角误差</SelectItem>
-                        <SelectItem value="waveform">波形显示</SelectItem>
+                    <SelectItem value="axial">轴向误差</SelectItem>
+                    <SelectItem value="tilt">倾角误差</SelectItem>
+                    <SelectItem value="waveform">波形显示</SelectItem>
                         <SelectItem value="spectrum">频谱分析（FFT）</SelectItem>
                         <SelectSeparator />
                         <SelectItem value="3d">3D模型展示</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  </SelectContent>
+                </Select>
                     <span className="text-xs text-muted-foreground">通道</span>
                     <Select value={panelChannels[2]} onValueChange={(v) => setPanelChannels((p) => ({ ...p, 2: v as Channel }))}>
                       <SelectTrigger className="w-28 h-7">
                         <SelectValue placeholder="选择通道" />
-                      </SelectTrigger>
-                      <SelectContent>
+                </SelectTrigger>
+                <SelectContent>
                         <SelectGroup>
                           <SelectLabel>选择通道</SelectLabel>
                           {channelOptions.map((c) => (
                             <SelectItem key={c} value={c}>{c}</SelectItem>
                           ))}
                         </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                    <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => { setLayoutMode('single'); setSingleView(panelTypes[2]); }}>
-                      <Maximize2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+                </SelectContent>
+              </Select>
+            </div>
+                  <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => { setLayoutMode('single'); setSingleView(panelTypes[2]); }}>
+                    <Maximize2 className="w-4 h-4" />
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent className="h-[420px] p-0">
@@ -881,7 +912,7 @@ export function RealtimeView() {
                   <div className="flex items-center gap-2">
                     <Select value={panelTypes[3]} onValueChange={(v) => setPanelTypes((p) => ({ ...p, 3: v as ChartType }))}>
                       <SelectTrigger className="w-56 h-7">
-                        <SelectValue />
+                        <SelectValue>{getDisplayLabel(panelTypes[3])}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         <SelectGroup>
@@ -914,10 +945,10 @@ export function RealtimeView() {
                         </SelectGroup>
                       </SelectContent>
                     </Select>
-                    <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => { setLayoutMode('single'); setSingleView(panelTypes[3]); }}>
-                      <Maximize2 className="w-4 h-4" />
-                    </Button>
                   </div>
+                  <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => { setLayoutMode('single'); setSingleView(panelTypes[3]); }}>
+                    <Maximize2 className="w-4 h-4" />
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent className="h-[420px] p-0">
@@ -932,7 +963,7 @@ export function RealtimeView() {
                   <div className="flex items-center gap-2">
                     <Select value={panelTypes[4]} onValueChange={(v) => setPanelTypes((p) => ({ ...p, 4: v as ChartType }))}>
                       <SelectTrigger className="w-56 h-7">
-                        <SelectValue />
+                        <SelectValue>{getDisplayLabel(panelTypes[4])}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         <SelectGroup>
@@ -965,10 +996,10 @@ export function RealtimeView() {
                         </SelectGroup>
                       </SelectContent>
                     </Select>
-                    <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => { setLayoutMode('single'); setSingleView(panelTypes[4]); }}>
-                      <Maximize2 className="w-4 h-4" />
-                    </Button>
                   </div>
+                  <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => { setLayoutMode('single'); setSingleView(panelTypes[4]); }}>
+                    <Maximize2 className="w-4 h-4" />
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent className="h-[420px] p-0">
